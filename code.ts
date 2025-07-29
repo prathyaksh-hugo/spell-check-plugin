@@ -1,4 +1,5 @@
 
+
 if (figma.editorType === 'figma') {
 
   figma.showUI(__html__);
@@ -18,8 +19,8 @@ if (figma.editorType === 'figma') {
       console.log(`Found and extracted text from ${allTextContent.length} text nodes.`);
 
   
-  figma.notify(`Found ${allTextContent.length} text layers on the page.`);
-  figma.ui.postMessage({ type: 'all-text-data', payload: allTextContent });
+    figma.notify(`Found ${allTextContent.length} text layers on the page.`);
+    figma.ui.postMessage({type: 'text-to-check', payload: allTextContent})
 
     }
   }

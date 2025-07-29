@@ -1,14 +1,79 @@
-<h1>Check Spelling</h1>
+    <h1>Check Spelling</h1>
+    <p>Click the button to scan the page for spelling errors.</p>
+    <div id="results"></div>
+    <div>
+      <button id="spellCheckButton">Check Spellings</button>
+    </div>
 
-<div>
-  <button id="spellCheckButton">Check Spellings</button>
-</div>
+    <script src="https://cdn.jsdelivr.net/npm/@ocordes/typo-js@1.1.0-2/typo.min.js"></script>
 
-<script>
-  const handleClick = (e) => {
-    
-    parent.postMessage({pluginMessage : {type: 'spell-check'},}, '*')
-  }
+    <script>
+      window.onload = () => {
+        if (typeof Typo === 'undefined') {
+          document.getElementById('results').innerHTML = '<strong style="color:red;">Error: The typo.js library failed to load.</strong>';
+          return;
+        }
 
-  document.getElementById('spellCheckButton').addEventListener('click', handleClick)
-</script>
+        const spellCheckButton = document.getElementById('spellCheckButton');
+        const resultsDiv = document.getElementById('results');
+
+        spellCheckButton.onclick = () => {
+          resultsDiv.innerHTML = 'Scanning page for text...';
+          parent.postMessage({ pluginMessage: { type: 'spell-check' } }, '*');
+        };
+
+        window.onmessage = async (event) => {
+          const message = event.data.pluginMessage;
+
+          if (message.type === 'text-to-check') {
+            resultsDiv.innerHTML = 'Loading dictionary...';
+            const allText = message.payload;
+
+            try {
+              const affUrl = 'https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.aff';
+              const dicUrl = 'https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.dic';
+
+              const [affResponse, dicResponse] = await Promise.all([
+                  fetch(affUrl),
+                  fetch(dicUrl)
+              ]);
+
+              if (!affResponse.ok || !dicResponse.ok) {
+                  throw new Error(`Failed to fetch dictionary files: ${affResponse.statusText}, ${dicResponse.statusText}`);
+              }
+
+              const affText = await affResponse.text();
+              const dicText = await dicResponse.text();
+              
+              resultsDiv.innerHTML = 'Checking spelling...';
+
+            
+              const dictionary = new Typo('en_US', affText, dicText);
+
+            
+              let misspelledWords = [];
+              allText.forEach(textBlock => {
+                  const words = textBlock.match(/[a-zA-Z']+/g) || [];
+                  words.forEach(word => {
+                      if (word.length > 0 && !dictionary.check(word)) {
+                          misspelledWords.push(word);
+                      }
+                  });
+              });
+
+              if (misspelledWords.length > 0) {
+                  resultsDiv.innerHTML = `<strong>Misspelled words found:</strong> ${misspelledWords.join(', ')}`;
+              } else {
+                  resultsDiv.innerHTML = 'No spelling errors found!';
+              }
+              console.log('Mispelled words:', misspelledWords);
+
+            } catch (error) {
+                console.error('Dictionary loading failed:', error);
+                resultsDiv.innerHTML = `<strong style="color:red;">Error: Could not load dictionary files. Check console.</strong>`;
+            }
+          }
+        };
+      };
+    </script>
+
