@@ -27,7 +27,7 @@
 
           if (message.type === 'text-to-check') {
             resultsDiv.innerHTML = 'Loading dictionary...';
-            const allText = message.payload;
+            const allTextData = message.payload;
 
             try {
               const affUrl = 'https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.aff';
@@ -50,23 +50,35 @@
             
               const dictionary = new Typo('en_US', affText, dicText);
 
-            
-              let misspelledWords = [];
-              allText.forEach(textBlock => {
-                  const words = textBlock.match(/[a-zA-Z']+/g) || [];
-                  words.forEach(word => {
-                      if (word.length > 0 && !dictionary.check(word)) {
-                          misspelledWords.push(word);
-                      }
-                  });
+              let nodesWithErrors = {};
+
+              allTextData.forEach(nodeData => {
+                const words = nodeData.text.match(/[a-zA-Z']+/g) || [];
+                
+                words.forEach(word => {
+                  
+                  if (word.length > 0 && !dictionary.check(word)) {
+                    if (!nodesWithErrors[nodeData.id]) {
+                      nodesWithErrors[nodeData.id] = { misspelled: [] };
+                    }
+                    
+                    nodesWithErrors[nodeData.id].misspelled.push(word);
+                  }
+                });
               });
 
-              if (misspelledWords.length > 0) {
-                  resultsDiv.innerHTML = `<strong>Misspelled words found:</strong> ${misspelledWords.join(', ')}`;
+              
+              const errorCount = Object.keys(nodesWithErrors).length;
+              if (errorCount > 0) {
+                resultsDiv.innerHTML = `Found errors in ${errorCount} text layers.`;
               } else {
-                  resultsDiv.innerHTML = 'No spelling errors found!';
+                resultsDiv.innerHTML = 'No spelling errors found!';
               }
-              console.log('Mispelled words:', misspelledWords);
+              
+              
+              console.log("Nodes with errors:", nodesWithErrors);
+
+              
 
             } catch (error) {
                 console.error('Dictionary loading failed:', error);

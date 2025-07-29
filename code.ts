@@ -11,10 +11,16 @@ if (figma.editorType === 'figma') {
         types: ['TEXT']
       })
 
-      const allTextContent: string [] = [] ;
-      for(const node of textNodes){
-        allTextContent.push(node.characters)
-      }
+      // const allTextContent: string [] = [] ;
+      // for(const node of textNodes){
+      //   allTextContent.push(node.characters)
+      // }
+
+      const allTextContent = textNodes.map(node => ({
+        id: node.id,
+        text: node.characters
+      }));
+      
       console.log('All extracted text:', allTextContent);
       console.log(`Found and extracted text from ${allTextContent.length} text nodes.`);
 
