@@ -1,0 +1,14 @@
+<h1>Check Spelling</h1>
+
+<div>
+  <button id="spellCheckButton">Check Spellings</button>
+</div>
+
+<script>
+  const handleClick = (e) => {
+    
+    parent.postMessage({pluginMessage : {type: 'spell-check'},}, '*')
+  }
+
+  document.getElementById('spellCheckButton').addEventListener('click', handleClick)
+</script>

@@ -40,5 +40,8 @@
         }
       ]
     }
+  },
+  "dependencies": {
+    "typo-js": "^1.2.5"
   }
 }
