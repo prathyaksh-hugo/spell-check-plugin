@@ -1,91 +1,175 @@
-    <h1>Check Spelling</h1>
-    <p>Click the button to scan the page for spelling errors.</p>
-    <div id="results"></div>
-    <div>
-      <button id="spellCheckButton">Check Spellings</button>
-    </div>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif;
+    margin: 16px;
+    font-size: 14px;
+  }
+  h1 {
+    font-size: 18px;
+  }
+  #resultsTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+  #resultsTable th,
+  #resultsTable td {
+    border: 1px solid #e5e5e5;
+    padding: 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  #resultsTable th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+  }
+  .word-cell {
+    color: #d92d20;
+    font-weight: 500;
+    cursor: pointer; /* Indicates it's clickable */
+    text-decoration: underline;
+  }
+  .word-cell:hover {
+    background-color: #f0f0f0;
+  }
+  .suggestion-btn {
+    background-color: transparent;
+    border: none;
+    color: #007bff;
+    padding: 2px 4px;
+    margin-right: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: underline;
+  }
+  .suggestion-btn:hover {
+    background-color: #e9ecef;
+  }
+  #spellCheckButton {
+    background-color: #0d99ff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  #spellCheckButton:hover {
+    background-color: #007be5;
+  }
+</style>
 
-    <script src="https://cdn.jsdelivr.net/npm/@ocordes/typo-js@1.1.0-2/typo.min.js"></script>
+<h1>Check Spelling</h1>
+<button id="spellCheckButton">Check Spellings</button>
+<div id="summary"></div>
+<div id="results"></div>
 
-    <script>
-      window.onload = () => {
-        if (typeof Typo === 'undefined') {
-          document.getElementById('results').innerHTML = '<strong style="color:red;">Error: The typo.js library failed to load.</strong>';
-          return;
-        }
+<script src="https://cdn.jsdelivr.net/npm/@ocordes/typo-js@1.1.0-2/typo.min.js"></script>
 
-        const spellCheckButton = document.getElementById('spellCheckButton');
-        const resultsDiv = document.getElementById('results');
+<script>
+  window.onload = () => {
+    if (typeof Typo === "undefined") {
+      document.getElementById("results").innerHTML =
+        '<strong style="color:red;">Error: The typo.js library failed to load.</strong>';
+      return;
+    }
 
-        spellCheckButton.onclick = () => {
-          resultsDiv.innerHTML = 'Scanning page for text...';
-          parent.postMessage({ pluginMessage: { type: 'spell-check' } }, '*');
-        };
+    const spellCheckButton = document.getElementById("spellCheckButton");
+    const resultsDiv = document.getElementById("results");
+    const summaryDiv = document.getElementById("summary");
 
-        window.onmessage = async (event) => {
-          const message = event.data.pluginMessage;
+    spellCheckButton.onclick = () => {
+      resultsDiv.innerHTML = "Scanning page for text...";
+      summaryDiv.innerHTML = "";
+      parent.postMessage({ pluginMessage: { type: "spell-check" } }, "*");
+    };
 
-          if (message.type === 'text-to-check') {
-            resultsDiv.innerHTML = 'Loading dictionary...';
-            const allTextData = message.payload;
+    window.onmessage = async (event) => {
+      const message = event.data.pluginMessage;
 
-            try {
-              const affUrl = 'https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.aff';
-              const dicUrl = 'https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.dic';
+      if (message.type === "text-to-check") {
+        resultsDiv.innerHTML = "Loading dictionary...";
+        const allTextData = message.payload;
 
-              const [affResponse, dicResponse] = await Promise.all([
-                  fetch(affUrl),
-                  fetch(dicUrl)
-              ]);
+        try {
+          const affUrl = "https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.aff";
+          const dicUrl = "https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.dic";
+          const [affResponse, dicResponse] = await Promise.all([fetch(affUrl), fetch(dicUrl)]);
+          if (!affResponse.ok || !dicResponse.ok) throw new Error(`Failed to fetch dictionary files.`);
+          const affText = await affResponse.text();
+          const dicText = await dicResponse.text();
 
-              if (!affResponse.ok || !dicResponse.ok) {
-                  throw new Error(`Failed to fetch dictionary files: ${affResponse.statusText}, ${dicResponse.statusText}`);
+          resultsDiv.innerHTML = "Checking spelling...";
+          const dictionary = new Typo("en_US", affText, dicText);
+
+          let errors = {};
+          allTextData.forEach((nodeData) => {
+            const words = nodeData.text.match(/[a-zA-Z']+/g) || [];
+            words.forEach((word) => {
+              if (word.length > 0 && !dictionary.check(word)) {
+                if (!errors[word]) {
+                  errors[word] = {
+                    suggestions: dictionary.suggest(word),
+                    nodes: new Set(),
+                  };
+                }
+                errors[word].nodes.add(nodeData.id);
               }
+            });
+          });
 
-              const affText = await affResponse.text();
-              const dicText = await dicResponse.text();
-              
-              resultsDiv.innerHTML = 'Checking spelling...';
-
+          const uniqueErrorCount = Object.keys(errors).length;
+          if (uniqueErrorCount > 0) {
+            summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} unique misspelled words.</strong>`;
             
-              const dictionary = new Typo('en_US', affText, dicText);
-
-              let nodesWithErrors = {};
-
-              allTextData.forEach(nodeData => {
-                const words = nodeData.text.match(/[a-zA-Z']+/g) || [];
-                
-                words.forEach(word => {
-                  
-                  if (word.length > 0 && !dictionary.check(word)) {
-                    if (!nodesWithErrors[nodeData.id]) {
-                      nodesWithErrors[nodeData.id] = { misspelled: [] };
-                    }
-                    
-                    nodesWithErrors[nodeData.id].misspelled.push(word);
-                  }
-                });
+            let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Misspelled Word</th><th>Suggestions</th></tr></thead><tbody>`;
+            let serialNumber = 1;
+            for (const [word, data] of Object.entries(errors)) {
+              tableHTML += `<tr id="row-${word}">
+                              <td>${serialNumber++}</td>
+                              <td class="word-cell" title="Click to highlight all instances" data-node-ids='${JSON.stringify(Array.from(data.nodes))}'>${word}</td>
+                              <td>`;
+              data.suggestions.slice(0, 5).forEach(suggestion => {
+                tableHTML += `<button class="suggestion-btn" data-old-word="${word}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(Array.from(data.nodes))}'>${suggestion}</button> `;
               });
-
-              
-              const errorCount = Object.keys(nodesWithErrors).length;
-              if (errorCount > 0) {
-                resultsDiv.innerHTML = `Found errors in ${errorCount} text layers.`;
-              } else {
-                resultsDiv.innerHTML = 'No spelling errors found!';
-              }
-              
-              
-              console.log("Nodes with errors:", nodesWithErrors);
-
-              
-
-            } catch (error) {
-                console.error('Dictionary loading failed:', error);
-                resultsDiv.innerHTML = `<strong style="color:red;">Error: Could not load dictionary files. Check console.</strong>`;
+              tableHTML += `</td></tr>`;
             }
-          }
-        };
-      };
-    </script>
+            tableHTML += `</tbody></table>`;
+            resultsDiv.innerHTML = tableHTML;
 
+            parent.postMessage({ pluginMessage: { type: 'resize-window', width: 750, height: 850 } }, '*');
+          } else {
+            summaryDiv.innerHTML = "";
+            resultsDiv.innerHTML = "No spelling errors found!";
+            parent.postMessage({ pluginMessage: { type: 'clear-highlights' }}, '*');
+          }
+
+        } catch (error) {
+          console.error("Error during spell check:", error);
+          resultsDiv.innerHTML = `<strong style="color:red;">Error: Could not process text.</strong>`;
+        }
+      } else if (message.type === 'word-replaced') {
+
+          spellCheckButton.click();
+      } else if (message.type === 're-check-document') {
+          spellCheckButton.click();
+      }
+    };
+    
+    resultsDiv.addEventListener('click', (event) => {
+        const target = event.target;
+        if (target.classList.contains('word-cell')) {
+            const nodeIds = JSON.parse(target.dataset.nodeIds);
+            parent.postMessage({ pluginMessage: { type: 'highlight-and-navigate', payload: nodeIds }}, '*');
+        }
+        if (target.classList.contains('suggestion-btn')) {
+            const nodeIds = JSON.parse(target.dataset.nodeIds);
+            const oldWord = target.dataset.oldWord;
+            const newWord = target.dataset.newWord;
+            parent.postMessage({ pluginMessage: { type: 'replace-word', payload: { nodeIds, oldWord, newWord } }}, '*');
+        }
+    });
+  };
+</script>
