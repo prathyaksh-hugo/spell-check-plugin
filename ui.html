@@ -114,10 +114,32 @@
           resultsDiv.innerHTML = "Checking spelling...";
           const dictionary = new Typo("en_US", affText, dicText);
 
+          const ignoreList = [
+            "prathyaksh",
+            "begumpet",
+            "secundrabad",
+            "figma",
+            "telapur",
+            "medchal",
+            "ghatkesar",
+            "sanathnagar",
+            "ferozguda",
+            "suchitra",
+            "bhudevi",
+            "ammuguda",
+            "neredmet",
+          ];
+
           let errors = {};
           allTextData.forEach((nodeData) => {
             const words = nodeData.text.match(/[a-zA-Z']+/g) || [];
             words.forEach((word) => {
+              const lowerCaseWord = word.toLowerCase();
+
+              if (word.length <= 2) return;
+              if (word === word.toUpperCase() && word.length > 1) return;
+              if (ignoreList.includes(lowerCaseWord)) return;
+
               if (word.length > 0 && !dictionary.check(word)) {
                 if (!errors[word]) {
                   errors[word] = {
