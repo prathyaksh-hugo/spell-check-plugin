@@ -69,6 +69,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@ocordes/typo-js@1.1.0-2/typo.min.js"></script>
 
 <script>
+  // Ensure all code inside is executed after the window is fully loaded
   window.onload = () => {
     if (typeof Typo === "undefined") {
       document.getElementById("results").innerHTML =
@@ -80,12 +81,14 @@
     const resultsDiv = document.getElementById("results");
     const summaryDiv = document.getElementById("summary");
 
+    // Sends a message to the code.ts (parent window) to initiate spell checking
     spellCheckButton.onclick = () => {
       resultsDiv.innerHTML = "Scanning page for text...";
       summaryDiv.innerHTML = "";
       parent.postMessage({ pluginMessage: { type: "spell-check" } }, "*");
     };
 
+    // It receives an Array of text data from code.ts (parent window) and processes it
     window.onmessage = async (event) => {
       const message = event.data.pluginMessage;
 
@@ -93,11 +96,18 @@
         resultsDiv.innerHTML = "Loading dictionary...";
         const allTextData = message.payload;
 
+        // It fetches the dictionary files (.aff and .dic) from the web
         try {
-          const affUrl = "https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.aff";
-          const dicUrl = "https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.dic";
-          const [affResponse, dicResponse] = await Promise.all([fetch(affUrl), fetch(dicUrl)]);
-          if (!affResponse.ok || !dicResponse.ok) throw new Error(`Failed to fetch dictionary files.`);
+          const affUrl =
+            "https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.aff";
+          const dicUrl =
+            "https://cdn.jsdelivr.net/npm/typo-js@1.2.5/dictionaries/en_US/en_US.dic";
+          const [affResponse, dicResponse] = await Promise.all([
+            fetch(affUrl),
+            fetch(dicUrl),
+          ]);
+          if (!affResponse.ok || !dicResponse.ok)
+            throw new Error(`Failed to fetch dictionary files.`);
           const affText = await affResponse.text();
           const dicText = await dicResponse.text();
 
@@ -120,56 +130,88 @@
             });
           });
 
-          const uniqueErrorCount = Object.keys(errors).length;
+          const uniqueErrorCount = Object.keys(errors).length; // Count unique misspelled words
           if (uniqueErrorCount > 0) {
             summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} unique misspelled words.</strong>`;
-            
+
             let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Misspelled Word</th><th>Suggestions</th></tr></thead><tbody>`;
             let serialNumber = 1;
             for (const [word, data] of Object.entries(errors)) {
               tableHTML += `<tr id="row-${word}">
                               <td>${serialNumber++}</td>
-                              <td class="word-cell" title="Click to highlight all instances" data-node-ids='${JSON.stringify(Array.from(data.nodes))}'>${word}</td>
+                              <td class="word-cell" title="Click to highlight all instances" data-node-ids='${JSON.stringify(
+                                Array.from(data.nodes)
+                              )}'>${word}</td>
                               <td>`;
-              data.suggestions.slice(0, 5).forEach(suggestion => {
-                tableHTML += `<button class="suggestion-btn" data-old-word="${word}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(Array.from(data.nodes))}'>${suggestion}</button> `;
+              data.suggestions.slice(0, 5).forEach((suggestion) => {
+                tableHTML += `<button class="suggestion-btn" data-old-word="${word}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
+                  Array.from(data.nodes)
+                )}'>${suggestion}</button> `;
               });
               tableHTML += `</td></tr>`;
             }
             tableHTML += `</tbody></table>`;
             resultsDiv.innerHTML = tableHTML;
 
-            parent.postMessage({ pluginMessage: { type: 'resize-window', width: 750, height: 850 } }, '*');
+            parent.postMessage(
+              {
+                pluginMessage: {
+                  type: "resize-window",
+                  width: 750,
+                  height: 850,
+                },
+              },
+              "*"
+            );
           } else {
             summaryDiv.innerHTML = "";
             resultsDiv.innerHTML = "No spelling errors found!";
-            parent.postMessage({ pluginMessage: { type: 'clear-highlights' }}, '*');
+            parent.postMessage(
+              { pluginMessage: { type: "clear-highlights" } },
+              "*"
+            );
           }
-
         } catch (error) {
           console.error("Error during spell check:", error);
           resultsDiv.innerHTML = `<strong style="color:red;">Error: Could not process text.</strong>`;
         }
-      } else if (message.type === 'word-replaced') {
-
-          spellCheckButton.click();
-      } else if (message.type === 're-check-document') {
-          spellCheckButton.click();
+      } else if (message.type === "word-replaced") {
+        spellCheckButton.click(); // Re-trigger spell check after a word is replaced
+      } else if (message.type === "re-check-document") {
+        spellCheckButton.click(); // Re-trigger spell check when document changes
       }
     };
-    
-    resultsDiv.addEventListener('click', (event) => {
-        const target = event.target;
-        if (target.classList.contains('word-cell')) {
-            const nodeIds = JSON.parse(target.dataset.nodeIds);
-            parent.postMessage({ pluginMessage: { type: 'highlight-and-navigate', payload: nodeIds }}, '*');
-        }
-        if (target.classList.contains('suggestion-btn')) {
-            const nodeIds = JSON.parse(target.dataset.nodeIds);
-            const oldWord = target.dataset.oldWord;
-            const newWord = target.dataset.newWord;
-            parent.postMessage({ pluginMessage: { type: 'replace-word', payload: { nodeIds, oldWord, newWord } }}, '*');
-        }
+
+    /* Event listener for clicking on results table cells
+     This allows users to highlight text nodes in the Figma canvas or replace words
+    when they click on the misspelled word or suggestion button */
+    resultsDiv.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target.classList.contains("word-cell")) {
+        const nodeIds = JSON.parse(target.dataset.nodeIds);
+        parent.postMessage(
+          {
+            pluginMessage: { type: "highlight-and-navigate", payload: nodeIds },
+          },
+          "*"
+        );
+      }
+
+      // If a suggestion button is clicked, it will replace the word in the canvas
+      if (target.classList.contains("suggestion-btn")) {
+        const nodeIds = JSON.parse(target.dataset.nodeIds);
+        const oldWord = target.dataset.oldWord;
+        const newWord = target.dataset.newWord;
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: "replace-word",
+              payload: { nodeIds, oldWord, newWord },
+            },
+          },
+          "*"
+        );
+      }
     });
   };
 </script>
