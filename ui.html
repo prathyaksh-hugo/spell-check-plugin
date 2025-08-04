@@ -4,35 +4,137 @@
       Helvetica, Arial, sans-serif;
     margin: 16px;
     font-size: 14px;
+    background: linear-gradient(135deg, #d0eaea 0%, #f6f6ec 100%);
+    min-height: 100vh;
   }
+
   h1 {
-    font-size: 18px;
+    font-size: 24px;
+    text-align: center;
+    margin-bottom: 20px;
   }
+
+  .plugin-description {
+    font-size: 13px;
+    color: #6c757d;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 20px;
+    padding: 0 8px;
+  }
+
+  #results {
+    margin-top: 8px;
+  }
+
+  #results:has(#resultsTable) {
+    background-color: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
   #resultsTable {
     width: 100%;
     border-collapse: collapse;
     margin-top: 12px;
+    background-color: white;
   }
+
   #resultsTable th,
   #resultsTable td {
     border: 1px solid #e5e5e5;
     padding: 8px;
     text-align: left;
     vertical-align: top;
+    background-color: white;
   }
+
   #resultsTable th {
     background-color: #f5f5f5;
     font-weight: 600;
   }
+
   .word-cell {
     color: #d92d20;
     font-weight: 500;
-    cursor: pointer; /* Indicates it's clickable */
+    cursor: pointer;
     text-decoration: underline;
+    transition: all 0.2s ease;
+    position: relative;
+    background-color: white;
   }
+
   .word-cell:hover {
     background-color: #f0f0f0;
   }
+
+  /* Edit mode styles */
+  .word-cell.editing {
+    background-color: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 4px;
+    padding: 6px;
+    text-decoration: none;
+  }
+
+  .word-edit-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+    width: 100%;
+    min-width: 80px;
+  }
+
+  .edit-controls {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .save-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .save-btn:hover {
+    background-color: #218838;
+  }
+
+  .cancel-btn {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .cancel-btn:hover {
+    background-color: #5a6268;
+  }
+
+  .edit-hint {
+    font-size: 11px;
+    color: #6c757d;
+    font-style: italic;
+  }
+
   .suggestion-btn {
     background-color: transparent;
     border: none;
@@ -44,24 +146,35 @@
     font-size: 13px;
     text-decoration: underline;
   }
+
   .suggestion-btn:hover {
     background-color: #e9ecef;
   }
+
   #spellCheckButton {
-    background-color: #0d99ff;
+    background-color: #2c9acf;
     color: white;
     border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 12px 0px;
+    border-radius: 8px;
     font-weight: 500;
     cursor: pointer;
+    width: 100%;
+    transition: background-color 0.2s ease;
+    margin-bottom: 16px;
   }
+
   #spellCheckButton:hover {
-    background-color: #007be5;
+    background-color: #2588b8;
   }
 </style>
 
 <h1>Check Spelling</h1>
+<p class="plugin-description">
+  Automatically scan your Figma design for misspelled words. Click on any
+  misspelled word to highlight all instances, or double-click to edit and
+  replace across your entire document.
+</p>
 <button id="spellCheckButton">Check Spellings</button>
 <div id="summary"></div>
 <div id="results"></div>
@@ -80,6 +193,10 @@
     const spellCheckButton = document.getElementById("spellCheckButton");
     const resultsDiv = document.getElementById("results");
     const summaryDiv = document.getElementById("summary");
+
+    // Variables to handle click timing
+    let clickTimer = null;
+    let currentlyEditing = null;
 
     // Sends a message to the code.ts (parent window) to initiate spell checking
     spellCheckButton.onclick = () => {
@@ -152,7 +269,7 @@
             });
           });
 
-          const uniqueErrorCount = Object.keys(errors).length; // Count unique misspelled words
+          const uniqueErrorCount = Object.keys(errors).length;
           if (uniqueErrorCount > 0) {
             summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} unique misspelled words.</strong>`;
 
@@ -161,9 +278,14 @@
             for (const [word, data] of Object.entries(errors)) {
               tableHTML += `<tr id="row-${word}">
                               <td>${serialNumber++}</td>
-                              <td class="word-cell" title="Click to highlight all instances" data-node-ids='${JSON.stringify(
-                                Array.from(data.nodes)
-                              )}'>${word}</td>
+                              <td class="word-cell" 
+                                  title="Single click: highlight | Double click: edit" 
+                                  data-word="${word}"
+                                  data-node-ids='${JSON.stringify(
+                                    Array.from(data.nodes)
+                                  )}'>
+                                <span class="word-text">${word}</span>
+                              </td>
                               <td>`;
               data.suggestions.slice(0, 5).forEach((suggestion) => {
                 tableHTML += `<button class="suggestion-btn" data-old-word="${word}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
@@ -198,28 +320,122 @@
           resultsDiv.innerHTML = `<strong style="color:red;">Error: Could not process text.</strong>`;
         }
       } else if (message.type === "word-replaced") {
-        spellCheckButton.click(); // Re-trigger spell check after a word is replaced
+        spellCheckButton.click();
       } else if (message.type === "re-check-document") {
-        spellCheckButton.click(); // Re-trigger spell check when document changes
+        spellCheckButton.click();
       }
     };
 
-    /* Event listener for clicking on results table cells
-     This allows users to highlight text nodes in the Figma canvas or replace words
-    when they click on the misspelled word or suggestion button */
-    resultsDiv.addEventListener("click", (event) => {
-      const target = event.target;
-      if (target.classList.contains("word-cell")) {
-        const nodeIds = JSON.parse(target.dataset.nodeIds);
-        parent.postMessage(
-          {
-            pluginMessage: { type: "highlight-and-navigate", payload: nodeIds },
-          },
-          "*"
-        );
+    // Function to handle single click (highlight)
+    function handleSingleClick(target) {
+      const nodeIds = JSON.parse(target.dataset.nodeIds);
+      parent.postMessage(
+        {
+          pluginMessage: { type: "highlight-and-navigate", payload: nodeIds },
+        },
+        "*"
+      );
+    }
+
+    // Function to handle double click (edit mode)
+    function handleDoubleClick(target) {
+      // Exit any existing edit mode
+      if (currentlyEditing) {
+        exitEditMode(currentlyEditing, false);
       }
 
-      // If a suggestion button is clicked, it will replace the word in the canvas
+      const word = target.dataset.word;
+      const nodeIds = target.dataset.nodeIds;
+
+      // Enter edit mode
+      enterEditMode(target, word, nodeIds);
+    }
+
+    // Function to enter edit mode
+    function enterEditMode(cell, word, nodeIds) {
+      currentlyEditing = cell;
+      cell.classList.add("editing");
+
+      const wordSpan = cell.querySelector(".word-text");
+      const originalHTML = cell.innerHTML;
+
+      cell.innerHTML = `
+        <input type="text" class="word-edit-input" value="${word}" />
+        <div class="edit-controls">
+          <button class="save-btn">Save</button>
+          <button class="cancel-btn">Cancel</button>
+          <span class="edit-hint">This will replace all instances</span>
+        </div>
+      `;
+
+      const input = cell.querySelector(".word-edit-input");
+      const saveBtn = cell.querySelector(".save-btn");
+      const cancelBtn = cell.querySelector(".cancel-btn");
+
+      // Focus and select the input
+      input.focus();
+      input.select();
+
+      // Handle save
+      saveBtn.onclick = (e) => {
+        e.stopPropagation();
+        const newWord = input.value.trim();
+        if (newWord && newWord !== word) {
+          // Send replace message to code.ts
+          parent.postMessage(
+            {
+              pluginMessage: {
+                type: "replace-word",
+                payload: {
+                  nodeIds: JSON.parse(nodeIds),
+                  oldWord: word,
+                  newWord: newWord,
+                },
+              },
+            },
+            "*"
+          );
+        }
+        exitEditMode(cell, true);
+      };
+
+      // Handle cancel
+      cancelBtn.onclick = (e) => {
+        e.stopPropagation();
+        exitEditMode(cell, false);
+      };
+
+      // Handle Enter key to save
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          saveBtn.click();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          cancelBtn.click();
+        }
+      };
+    }
+
+    // Function to exit edit mode
+    function exitEditMode(cell, saved) {
+      if (!cell) return;
+
+      const word = cell.dataset.word;
+      cell.classList.remove("editing");
+      cell.innerHTML = `<span class="word-text">${word}</span>`;
+      currentlyEditing = null;
+
+      if (saved) {
+        // The spell check will be re-triggered by the word-replaced message
+      }
+    }
+
+    // Event listener with single/double click handling
+    resultsDiv.addEventListener("click", (event) => {
+      const target = event.target;
+
+      // Handle suggestion button clicks (unchanged)
       if (target.classList.contains("suggestion-btn")) {
         const nodeIds = JSON.parse(target.dataset.nodeIds);
         const oldWord = target.dataset.oldWord;
@@ -233,6 +449,48 @@
           },
           "*"
         );
+        return;
+      }
+
+      // Handle word cell clicks (single vs double click)
+      if (
+        target.classList.contains("word-cell") ||
+        target.closest(".word-cell")
+      ) {
+        const cell = target.classList.contains("word-cell")
+          ? target
+          : target.closest(".word-cell");
+
+        // Ignore clicks if we're in edit mode
+        if (cell.classList.contains("editing")) {
+          return;
+        }
+
+        event.preventDefault();
+
+        // Clear any existing timer
+        if (clickTimer) {
+          clearTimeout(clickTimer);
+          clickTimer = null;
+          // This is a double click
+          handleDoubleClick(cell);
+        } else {
+          // Set timer for single click
+          clickTimer = setTimeout(() => {
+            clickTimer = null;
+            handleSingleClick(cell);
+          }, 300); // 300ms delay to detect double click
+        }
+      }
+    });
+
+    // Prevent double-click text selection
+    resultsDiv.addEventListener("selectstart", (event) => {
+      if (
+        event.target.classList.contains("word-cell") ||
+        event.target.closest(".word-cell")
+      ) {
+        event.preventDefault();
       }
     });
   };
