@@ -260,7 +260,7 @@
       let ignoreList = [];
       let currentErrors = {};
 
-      const NGROK_BASE_URL = "https://1cb7b01ac565.ngrok-free.app"; // Replace if your ngrok URL changes
+      const NGROK_BASE_URL = "https://84390b78e26b.ngrok-free.app"; // Replace if your ngrok URL changes
       const AI_API_ENDPOINT = `${NGROK_BASE_URL}/v1/check`;
       const IGNORE_LIST_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore-list`;
       const ADD_TO_IGNORE_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore`;
@@ -300,29 +300,36 @@
         try {
           resultsDiv.innerHTML = `Analyzing ${allTextData.length} text layers...`;
 
-          const uniqueTextToNodeIds = new Map();
-          allTextData.forEach((node) => {
-            const text = node.text.trim();
-            if (ignoreList.includes(text.toLowerCase())) {
-              return;
-            }
-            if (!text || text.length <= 1 || /^[0-9\s.,$€£%]+$/.test(text)) {
-              return;
-            }
-            if (!uniqueTextToNodeIds.has(text)) {
-              uniqueTextToNodeIds.set(text, []);
-            }
-            uniqueTextToNodeIds.get(text).push(node.id);
-          });
-
-          const uniqueTexts = Array.from(uniqueTextToNodeIds.keys());
-
-          if (uniqueTexts.length === 0) {
-            renderTable({});
-            return;
+        const wordToNodeIds = new Map();
+        allTextData.forEach(node => {
+            const cleanText = node.text.replace(/\n/g, ' ').replace(/^→\s*/, '');
+            const words = cleanText.match(/[a-zA-Z']+/g) || [];
+            words.forEach(word => {
+                if (!wordToNodeIds.has(word)) { wordToNodeIds.set(word, new Set()); }
+                wordToNodeIds.get(word).add(node.id);
+            });
+        });
+        
+        // This second map is for preparing the unique SENTENCES to send to the AI.
+        const uniqueTextToNodeIds = new Map();
+        allTextData.forEach((node) => {
+          const text = node.text.replace(/\n/g, ' ').replace(/^→\s*/, '').trim();
+        
+          if (!/[a-zA-Z]/.test(text)) { 
+            return; 
           }
+          
+          if (ignoreList.includes(text.toLowerCase())) { return; }
 
-          resultsDiv.innerHTML = `Found ${uniqueTexts.length} unique text snippets. Checking with AI...`;
+          if (!uniqueTextToNodeIds.has(text)) { uniqueTextToNodeIds.set(text, []); }
+          uniqueTextToNodeIds.get(text).push(node.id);
+        });
+        const uniqueTexts = Array.from(uniqueTextToNodeIds.keys());
+
+        if (uniqueTexts.length === 0) {
+          renderTable({});
+          return;
+        }
 
           const response = await fetch(AI_API_ENDPOINT, {
             method: "POST",
@@ -376,7 +383,7 @@
         }
     }
 
-          currentErrors = finalErrors;
+          currentErrors = filteredErrors;
           renderTable(currentErrors);
         } catch (error) {
           console.error("A JavaScript error occurred:", error);
