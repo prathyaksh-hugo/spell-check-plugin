@@ -327,7 +327,7 @@
         try {
           resultsDiv.innerHTML = `Analyzing ${allTextData.length} text layers...`;
 
-          // This map is crucial for finding all nodes a specific WORD appears in.
+          // This map is crucial for finding all nodes a specific WORD appears in
           const wordToNodeIds = new Map();
           allTextData.forEach((node) => {
             const cleanText = node.text
