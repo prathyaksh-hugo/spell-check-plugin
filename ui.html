@@ -50,7 +50,7 @@
         background-color: #f5f5f5;
         font-weight: 600;
       }
-      .word-cell {
+      .original-text-cell {
         color: #d92d20;
         font-weight: 500;
         cursor: pointer;
@@ -58,7 +58,7 @@
         position: relative;
         background-color: white;
       }
-      .word-cell:hover {
+      .original-text-cell:hover {
         background-color: #fef2f2;
         color: #b91c1c;
       }
@@ -112,13 +112,21 @@
         border: 1px solid #d1fae5;
         text-decoration: none !important;
       }
-      .word-cell.editing {
+      .original-text-cell.editing {
         background-color: #fff3cd;
         border: 2px solid #ffc107;
         border-radius: 4px;
         padding: 6px;
         text-decoration: none;
       }
+
+        .highlight {
+    color: #d92d20;
+    font-weight: 700;
+    background-color: #fef2f2;
+    padding: 1px 3px;
+    border-radius: 3px;
+  }
       .word-edit-input {
         background: transparent;
         border: none;
@@ -260,7 +268,10 @@
       let ignoreList = [];
       let currentErrors = {};
 
-      const NGROK_BASE_URL = "https://84390b78e26b.ngrok-free.app"; // Replace if your ngrok URL changes
+      let currentTypos = {};
+      let currentUxWritingSuggestions = {};
+
+      const NGROK_BASE_URL = "https://9d84f9cf0e2b.ngrok-free.app"; // Replace if your ngrok URL changes
       const AI_API_ENDPOINT = `${NGROK_BASE_URL}/v1/check`;
       const IGNORE_LIST_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore-list`;
       const ADD_TO_IGNORE_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore`;
@@ -293,252 +304,188 @@
           })
           .catch((err) => console.error("Failed to load ignore list:", err));
       };
+async function processSpellCheckWithAI(allTextData) {
+      const resultsDiv = document.getElementById("results");
+      const spellCheckButton = document.getElementById("spellCheckButton");
+      try {
+        resultsDiv.innerHTML = `Analyzing ${allTextData.length} text layers...`;
 
-      async function processSpellCheckWithAI(allTextData) {
-        const resultsDiv = document.getElementById("results");
-        const spellCheckButton = document.getElementById("spellCheckButton");
-        try {
-          resultsDiv.innerHTML = `Analyzing ${allTextData.length} text layers...`;
-
-        const wordToNodeIds = new Map();
-        allTextData.forEach(node => {
-            const cleanText = node.text.replace(/\n/g, ' ').replace(/^→\s*/, '');
-            const words = cleanText.match(/[a-zA-Z']+/g) || [];
-            words.forEach(word => {
-                if (!wordToNodeIds.has(word)) { wordToNodeIds.set(word, new Set()); }
-                wordToNodeIds.get(word).add(node.id);
-            });
-        });
-        
-        // This second map is for preparing the unique SENTENCES to send to the AI.
         const uniqueTextToNodeIds = new Map();
         allTextData.forEach((node) => {
-          const text = node.text.replace(/\n/g, ' ').replace(/^→\s*/, '').trim();
-        
-          if (!/[a-zA-Z]/.test(text)) { 
-            return; 
+          const text = node.text.trim();
+          if (!text || text.length <= 1 || /^[0-9\s.,$€£%]+$/.test(text)) {
+            return;
           }
-          
-          if (ignoreList.includes(text.toLowerCase())) { return; }
-
-          if (!uniqueTextToNodeIds.has(text)) { uniqueTextToNodeIds.set(text, []); }
+          if (!uniqueTextToNodeIds.has(text)) {
+            uniqueTextToNodeIds.set(text, []);
+          }
           uniqueTextToNodeIds.get(text).push(node.id);
         });
+
         const uniqueTexts = Array.from(uniqueTextToNodeIds.keys());
 
         if (uniqueTexts.length === 0) {
-          renderTable({});
+          renderTable([]);
           return;
         }
 
-          const response = await fetch(AI_API_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ texts: uniqueTexts }),
-          });
+        resultsDiv.innerHTML = `Found ${uniqueTexts.length} unique text snippets. Checking with AI...`;
+        
+        const response = await fetch(AI_API_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texts: uniqueTexts })
+        });
+        if (!response.ok) { throw new Error(`AI server error: ${response.statusText}`); }
+        const aiData = await response.json();
 
-          if (!response.ok) {
-            throw new Error(`AI server error: ${response.statusText}`);
-          }
+        // --- NEW: Create a flat list of individual corrections ---
+        let correctionsList = [];
+        aiData.results.forEach((result, index) => {
+            if (!result.is_correct && result.corrections) {
+                const originalSentence = uniqueTexts[index];
+                
+                result.corrections.forEach(correction => {
+                    const originalWord = correction.original || (correction.type === 'UX_WRITING' ? originalSentence : '');
+                    if (ignoreList.includes(originalWord.toLowerCase())) return;
 
-          const aiData = await response.json();
-
-          const errors = {};
-          aiData.results.forEach((result) => {
-            if (!result.is_correct && result.corrections_log) {
-              const originalSentence = result.original_text;
-              const nodeIdsForSentence =
-                uniqueTextToNodeIds.get(originalSentence);
-              if (nodeIdsForSentence) {
-                result.corrections_log.forEach((log) => {
-                  const originalWord = log.original;
-                  const correctedWord = log.corrected;
-                  if (!errors[originalWord]) {
-                    errors[originalWord] = {
-                      suggestions: new Set(),
-                      nodes: new Set(),
-                    };
-                  }
-                  errors[originalWord].suggestions.add(correctedWord);
-                  nodeIdsForSentence.forEach((nodeId) =>
-                    errors[originalWord].nodes.add(nodeId)
-                  );
+                    correctionsList.push({
+                        id: `${originalSentence}-${originalWord}-${correction.suggestion}`,
+                        originalSentence: originalSentence,
+                        originalWord: originalWord,
+                        suggestion: correction.suggestion,
+                        type: correction.type,
+                        nodes: uniqueTextToNodeIds.get(originalSentence) || []
+                    });
                 });
-              }
             }
-          });
+        });
+        
+        allCorrections = correctionsList;
+        renderTable(allCorrections);
 
-          const finalErrors = {};
-          for (const word in errors) {
-            finalErrors[word] = {
-              suggestions: Array.from(errors[word].suggestions),
-              nodes: Array.from(errors[word].nodes),
-            };
-          }
-
-              const filteredErrors = {};
-    for (const word in finalErrors) {
-        if (!ignoreList.includes(word.toLowerCase())) {
-            filteredErrors[word] = finalErrors[word];
-        }
-    }
-
-          currentErrors = filteredErrors;
-          renderTable(currentErrors);
-        } catch (error) {
+      } catch (error) {
           console.error("A JavaScript error occurred:", error);
-          resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Please check the Figma console (Plugins > Development > Open Console).</strong>`;
-        } finally {
+          resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the Figma console.</strong>`;
+      } finally {
           isLoading = false;
           spellCheckButton.disabled = false;
           spellCheckButton.innerHTML = "Check with AI";
-        }
       }
+    }
 
-      function renderTable(errors) {
+    function renderTable(corrections) {
         const summaryDiv = document.getElementById("summary");
         const resultsDiv = document.getElementById("results");
-        const uniqueErrorCount = Object.keys(errors).length;
+        const uniqueErrorCount = corrections.length;
 
         if (uniqueErrorCount > 0) {
-          summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} unique misspelled words.</strong>`;
+            summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} suggestions.</strong>`;
+            let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>Typos & Brand Rules</th><th>Grammar & UX Writing</th></tr></thead><tbody>`;
 
-          let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Misspelled Word</th><th>Suggestions & Actions</th></tr></thead><tbody>`;
-          let serialNumber = 1;
+            corrections.forEach((correction, index) => {
+                const { id, originalSentence, originalWord, suggestion, type, nodes } = correction;
+                const instanceCount = nodes.length;
 
-          for (const [word, data] of Object.entries(errors)) {
-            const nodeIds = data.nodes;
-            const instanceCount = nodeIds.length;
+                const sentenceHTML = originalSentence.replace(
+                    new RegExp(`\\b${originalWord.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")}\\b`, 'gi'), 
+                    `<strong class="highlight">${originalWord}</strong>`
+                );
 
-            tableHTML += `<tr id="row-${word}">
-                        <td>${serialNumber++}</td>
-                        <td class="word-cell" 
-                            data-word="${word}"
-                            data-instance-count="${instanceCount}"
-                            data-node-ids='${JSON.stringify(nodeIds)}'>
-                          <div class="word-container">
-                            <div class="word-main">
-                              <span class="word-text" title="Click to navigate | Double click: edit" style="cursor: pointer;">${word}</span>
-                            </div>
-                            ${
-                              instanceCount > 1
-                                ? `
-                            <div class="navigation-controls">
-                              <button class="nav-btn" data-action="prev" data-word="${word}" title="Previous instance">‹</button>
-                              <span class="navigation-info" id="nav-${word}">1/${instanceCount}</span>
-                              <button class="nav-btn" data-action="next" data-word="${word}" title="Next instance">›</button>
-                            </div>
-                            `
-                                : ""
-                            }
-                          </div>
-                        </td>
-                        <td>
-                          ${data.suggestions
-                            .map(
-                              (suggestion) => `
-                            <button class="suggestion-btn" data-old-word="${word}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
-                                nodeIds
-                              )}'>${suggestion}</button>
-                          `
-                            )
-                            .join("")}
-                          <button class="ignore-btn" data-word="${word}" title="Ignore this word for future checks">Ignore</button>
-                        </td>
-                      </tr>`;
-          }
+                tableHTML += `<tr id="row-${id}">
+                                <td>${index + 1}</td>
+                                <td class="original-text-cell" 
+                                    data-word="${originalWord}"
+                                    data-instance-count="${instanceCount}"
+                                    data-node-ids='${JSON.stringify(nodes)}'>
+                                    <div>${sentenceHTML}</div>
+                                    ${ instanceCount > 1 && type === 'TYPO_BRAND' ? `
+                                    <div class="navigation-controls">
+                                        <button class="nav-btn" data-action="prev" data-word="${originalWord}" title="Previous instance">‹</button>
+                                        <span class="navigation-info" id="nav-${originalWord}">1/${instanceCount}</span>
+                                        <button class="nav-btn" data-action="next" data-word="${originalWord}" title="Next instance">›</button>
+                                    </div>
+                                    ` : "" }
+                                </td>
+                                <td>`; // Typos Column
+                if (type === 'TYPO_BRAND') {
+                    tableHTML += `<button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(nodes)}'>${suggestion}</button>
+                                  <button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}" title="Ignore this word">Ignore</button>`;
+                }
+                tableHTML += `</td>
+                                <td>`; // UX Writing Column
+                if (type === 'UX_WRITING') {
+                    tableHTML += `<button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalSentence}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(nodes)}'>${suggestion}</button>
+                                  <button class="ignore-btn" data-correction-id="${id}" data-word="${originalSentence}" title="Ignore this suggestion">Ignore</button>`;
+                }
+                tableHTML += `</td>
+                              </tr>`;
+            });
 
-          tableHTML += `</tbody></table>`;
-          resultsDiv.innerHTML = tableHTML;
-          parent.postMessage({ pluginMessage: { type: "resize-window", width: 800, height: Math.min(900, 350 + uniqueErrorCount * 55) }}, "*");
+            tableHTML += `</tbody></table>`;
+            resultsDiv.innerHTML = tableHTML;
+            parent.postMessage({ pluginMessage: { type: "resize-window", width: 800, height: Math.min(900, 350 + uniqueErrorCount * 65) }}, "*");
         } else {
-          summaryDiv.innerHTML = "";
-          resultsDiv.innerHTML = "No spelling errors found! ✓";
-          parent.postMessage(
-            { pluginMessage: { type: "clear-navigation" } },
-            "*"
-          );
+            summaryDiv.innerHTML = "";
+            resultsDiv.innerHTML = "No spelling errors found! ✓";
+            parent.postMessage({ pluginMessage: { type: "clear-navigation" } }, "*");
         }
-      }
+    }
 
-      window.onmessage = async (event) => {
+    window.onmessage = async (event) => {
         const { type, payload } = event.data.pluginMessage;
-        const spellCheckButton = document.getElementById("spellCheckButton");
-
         switch (type) {
-          case "text-to-check":
-            const currentTime = Date.now();
-            if (currentTime - lastCheckTime < 500) return;
-            lastCheckTime = currentTime;
-            await processSpellCheckWithAI(payload);
-            break;
-          case "word-replaced":
-            // No longer need to trigger a full rescan here, UI updates instantly
-            break;
-          case "navigation-update":
-            const { word, currentIndex, totalInstances } = payload;
-            const navElement = document.getElementById(`nav-${word}`);
-            if (navElement && totalInstances > 1) {
-              navElement.textContent = `${currentIndex}/${totalInstances}`;
-            }
-            break;
-          case "re-check-document":
-            // On undo or other manual changes, a full rescan is still the most reliable way to sync
-            setTimeout(() => {
-              if (!isLoading) {
-                spellCheckButton.click();
-              }
-            }, 1000);
-            break;
+            case "text-to-check":
+                await processSpellCheckWithAI(payload);
+                break;
+            case "navigation-update":
+                const { word, currentIndex, totalInstances } = payload;
+                const navElement = document.getElementById(`nav-${word}`);
+                if (navElement && totalInstances > 1) {
+                    navElement.textContent = `${currentIndex}/${totalInstances}`;
+                }
+                break;
+            case "re-check-document":
+                const spellCheckButton = document.getElementById("spellCheckButton");
+                setTimeout(() => {
+                    if (!isLoading) {
+                        spellCheckButton.click();
+                    }
+                }, 1000);
+                break;
         }
-      };
+    };
 
-      function handleNavigationClick(target) {
-        const word = target.dataset.word;
-        const nodeIds = JSON.parse(target.dataset.nodeIds);
-        parent.postMessage(
-          {
-            pluginMessage: {
-              type: "navigate-to-word",
-              payload: { word, nodeIds },
-            },
-          },
-          "*"
-        );
-      }
+    function handleNavigationClick(targetCell) {
+        const word = targetCell.dataset.word;
+        const nodeIds = JSON.parse(targetCell.dataset.nodeIds);
+        parent.postMessage({ pluginMessage: { type: "navigate-to-word", payload: { word, nodeIds } }}, "*");
+    }
 
-      function handlePrevNext(action, word) {
-        parent.postMessage(
-          {
-            pluginMessage: {
-              type: action === "prev" ? "navigate-prev" : "navigate-next",
-              payload: { word },
-            },
-          },
-          "*"
-        );
-      }
+    function handlePrevNext(action, word) {
+        parent.postMessage({ pluginMessage: { type: action === "prev" ? "navigate-prev" : "navigate-next", payload: { word } }}, "*");
+    }
 
-      function handleDoubleClick(target) {
-        if (currentlyEditing) {
-          exitEditMode(currentlyEditing, false);
-        }
-        const wordCell = target.closest(".word-cell");
-        if (!wordCell) return;
-        const word = wordCell.dataset.word;
-        const nodeIds = wordCell.dataset.nodeIds;
-        enterEditMode(wordCell, word, nodeIds);
-      }
+    function handleDoubleClick(target) {
+        if (currentlyEditing) { exitEditMode(currentlyEditing, false); }
+        const cell = target.closest(".original-text-cell");
+        if (!cell) return;
+        
+        const word = cell.dataset.word;
+        const nodeIds = cell.dataset.nodeIds;
+        enterEditMode(cell, word, nodeIds);
+    }
 
-      function enterEditMode(cell, word, nodeIds) {
+    function enterEditMode(cell, word, nodeIds) {
         currentlyEditing = cell;
+        const originalHTML = cell.innerHTML;
         cell.classList.add("editing");
         cell.innerHTML = `
         <input type="text" class="word-edit-input" value="${word}" />
         <div class="edit-controls">
           <button class="save-btn">Save</button>
           <button class="cancel-btn">Cancel</button>
-          <span class="edit-hint">This will replace all instances</span>
+          <span class="edit-hint">Replaces all instances</span>
         </div>`;
         const input = cell.querySelector(".word-edit-input");
         const saveBtn = cell.querySelector(".save-btn");
@@ -546,150 +493,89 @@
         input.focus();
         input.select();
         saveBtn.onclick = (e) => {
-          e.stopPropagation();
-          const newWord = input.value.trim();
-          if (newWord && newWord !== word) {
-            parent.postMessage(
-              {
-                pluginMessage: {
-                  type: "replace-word",
-                  payload: {
-                    nodeIds: JSON.parse(nodeIds),
-                    oldWord: word,
-                    newWord: newWord,
-                  },
-                },
-              },
-              "*"
-            );
-            if (currentErrors[word]) {
-              delete currentErrors[word];
-              renderTable(currentErrors);
+            e.stopPropagation();
+            const newWord = input.value.trim();
+            if (newWord && newWord !== word) {
+                parent.postMessage({ pluginMessage: { type: "replace-word", payload: { nodeIds: JSON.parse(nodeIds), oldWord: word, newWord: newWord }}}, "*");
+                allCorrections = allCorrections.filter(c => c.originalWord !== word);
+                renderTable(allCorrections);
             }
-          }
-          exitEditMode(cell, true);
+            exitEditMode(cell, originalHTML);
         };
-        cancelBtn.onclick = (e) => {
-          e.stopPropagation();
-          exitEditMode(cell, false);
-        };
+        cancelBtn.onclick = (e) => { e.stopPropagation(); exitEditMode(cell, originalHTML); };
         input.onkeydown = (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            saveBtn.click();
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            cancelBtn.click();
-          }
+            if (e.key === "Enter") { e.preventDefault(); saveBtn.click(); }
+            else if (e.key === "Escape") { e.preventDefault(); cancelBtn.click(); }
         };
-      }
+    }
 
-      function exitEditMode(cell, saved) {
+    function exitEditMode(cell, originalHTML) {
         if (!cell) return;
-        const word = cell.dataset.word;
-        const instanceCount = parseInt(cell.dataset.instanceCount);
         cell.classList.remove("editing");
-        cell.innerHTML = `
-        <div class="word-container">
-          <div class="word-main">
-            <span class="word-text" title="Click to navigate | Double click: edit" style="cursor: pointer;">${word}</span>
-          </div>
-          ${
-            instanceCount > 1
-              ? `
-          <div class="navigation-controls">
-            <button class="nav-btn" data-action="prev" data-word="${word}" title="Previous instance">‹</button>
-            <span class="navigation-info" id="nav-${word}">1/${instanceCount}</span>
-            <button class="nav-btn" data-action="next" data-word="${word}" title="Next instance">›</button>
-          </div>
-          `
-              : ""
-          }
-        </div>`;
+        cell.innerHTML = originalHTML;
         currentlyEditing = null;
-      }
+    }
 
-      document.getElementById("results").addEventListener("click", (event) => {
+    document.getElementById("results").addEventListener("click", (event) => {
         const target = event.target;
-
         if (target.classList.contains("ignore-btn")) {
-          const word = target.dataset.word;
-          if (currentErrors[word]) {
-            delete currentErrors[word];
-            renderTable(currentErrors);
-          }
-          fetch(ADD_TO_IGNORE_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ word: word }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              console.log(data.status);
-              if (!ignoreList.includes(word.toLowerCase())) {
-                ignoreList.push(word.toLowerCase());
-              }
+            const correctionId = target.dataset.correctionId;
+            const word = target.dataset.word;
+            allCorrections = allCorrections.filter(c => c.id !== correctionId);
+            renderTable(allCorrections);
+            fetch(ADD_TO_IGNORE_ENDPOINT, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ word: word }),
             })
-            .catch((err) =>
-              console.error("Failed to update ignore list:", err)
-            );
-          return;
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.status);
+                if (!ignoreList.includes(word.toLowerCase())) {
+                    ignoreList.push(word.toLowerCase());
+                }
+            });
+            return;
         }
-
         if (target.classList.contains("suggestion-btn")) {
-          const nodeIds = JSON.parse(target.dataset.nodeIds);
-          const oldWord = target.dataset.oldWord;
-          const newWord = target.dataset.newWord;
-          parent.postMessage(
-            {
-              pluginMessage: {
-                type: "replace-word",
-                payload: { nodeIds, oldWord, newWord },
-              },
-            },
-            "*"
-          );
-          if (currentErrors[oldWord]) {
-            delete currentErrors[oldWord];
-            renderTable(currentErrors);
-          }
-          return;
+            const correctionId = target.dataset.correctionId;
+            const nodeIds = JSON.parse(target.dataset.nodeIds);
+            const oldWord = target.dataset.oldWord;
+            const newWord = target.dataset.newWord;
+            parent.postMessage({ pluginMessage: { type: "replace-word", payload: { nodeIds, oldWord, newWord }}}, "*");
+            allCorrections = allCorrections.filter(c => c.id !== correctionId);
+            renderTable(allCorrections);
+            return;
         }
-
         if (target.classList.contains("nav-btn")) {
-          const action = target.dataset.action;
-          const word = target.dataset.word;
-          handlePrevNext(action, word);
-          return;
+            const action = target.dataset.action;
+            const word = target.dataset.word;
+            handlePrevNext(action, word);
+            return;
         }
-
-        if (target.classList.contains("word-text")) {
-          const cell = target.closest(".word-cell");
-          if (!cell || cell.classList.contains("editing")) return;
-          event.preventDefault();
-          if (clickTimer) {
-            clearTimeout(clickTimer);
-            clickTimer = null;
-            handleDoubleClick(target);
-          } else {
-            clickTimer = setTimeout(() => {
-              clickTimer = null;
-              handleNavigationClick(cell);
-            }, 300);
-          }
-        }
-      });
-
-      document
-        .getElementById("results")
-        .addEventListener("selectstart", (event) => {
-          if (
-            event.target.classList.contains("word-text") ||
-            event.target.closest(".word-cell")
-          ) {
+        
+        const cell = target.closest(".original-text-cell");
+        if (cell) {
+            if (cell.classList.contains("editing")) return;
             event.preventDefault();
-          }
-        });
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+                handleDoubleClick(cell);
+            } else {
+                clickTimer = setTimeout(() => {
+                    clickTimer = null;
+                    handleNavigationClick(cell);
+                }, 250);
+            }
+        }
+    });
+
+    document.getElementById("results").addEventListener("selectstart", (event) => {
+        if (event.target.closest(".original-text-cell")) {
+            event.preventDefault();
+        }
+    });
     </script>
   </body>
 </html>
