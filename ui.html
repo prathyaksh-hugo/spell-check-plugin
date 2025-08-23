@@ -255,6 +255,58 @@
         background-color: #e9ecef;
         border-color: #adb5bd;
       }
+        .page {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 16px;
+      box-sizing: border-box;
+      background: linear-gradient(135deg, #d0eaea 0%, #f6f6ec 100%);
+      transition: transform 0.3s ease-in-out;
+  }
+  .page.hidden {
+      transform: translateX(100%);
+  }
+  .page.active {
+      transform: translateX(0);
+  }
+  .back-button {
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 16px;
+  }
+  .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 24px;
+  }
+  .check-button {
+    flex: 1;
+    background-color: #2c9acf;
+    color: white;
+    border: none;
+    padding: 14px 0px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  .check-button.secondary {
+      background-color: #6c757d;
+  }
+  .check-button:hover {
+      opacity: 0.9;
+  }
+  .check-button:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+  }
+    
       @keyframes spin {
         0% {
           transform: rotate(0deg);
@@ -266,250 +318,188 @@
     </style>
   </head>
   <body>
+<div id="homePage" class="page active">
     <h1>AI Spell Check</h1>
     <p class="plugin-description">
-      Scan your design with our advanced AI model, powered by Gemini. Click on
-      any misspelled word to navigate, or double-click to edit and replace
-      across your document.
+      Select one or more frames, then choose a check to run.
     </p>
-    <button id="spellCheckButton">Check with AI</button>
+    <div class="button-group">
+        <button id="typoCheckButton" class="check-button">Check Typos & Rules</button>
+        <button id="uxCheckButton" class="check-button secondary">Improve Content</button>
+    </div>
+    <div id="home-status"></div>
+</div>
+
+<div id="resultsPage" class="page hidden">
+    <button id="backButton" class="back-button">← Back</button>
+    <h2 id="resultsTitle"></h2>
     <div id="summary"></div>
     <div id="results"></div>
+</div>
 
-    <script>
-      let isLoading = false;
-      let navigationStates = {};
-      let currentlyEditing = null;
-      let clickTimer = null;
-      let lastCheckTime = 0;
-      let ignoreList = [];
-      let currentErrors = {};
+<script>
+  let isLoading = false;
+  let allCorrections = [];
+  let lastCheckType = null;
 
-      let currentTypos = {};
-      let currentUxWritingSuggestions = {};
+  const NGROK_BASE_URL = "https://7f13142543eb.ngrok-free.app"; // replace if needed
+  const SPELL_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/spell-check`;
+  const CONTENT_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/content-check`;
 
-      const NGROK_BASE_URL = "https://9d84f9cf0e2b.ngrok-free.app"; // Replace if your ngrok URL changes
-      const AI_API_ENDPOINT = `${NGROK_BASE_URL}/v1/check`;
-      const IGNORE_LIST_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore-list`;
-      const ADD_TO_IGNORE_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore`;
+  const homePage = document.getElementById("homePage");
+  const resultsPage = document.getElementById("resultsPage");
 
-      window.onload = () => {
-        const spellCheckButton = document.getElementById("spellCheckButton");
+  function showResultsPage() {
+    homePage.classList.add("hidden");
+    resultsPage.classList.remove("hidden");
+  }
 
-        spellCheckButton.onclick = () => {
-          if (isLoading) return;
-          isLoading = true;
-          spellCheckButton.disabled = true;
-          spellCheckButton.innerHTML =
-            '<div class="loading"><div class="spinner"></div>Scanning with AI...</div>';
-          document.getElementById("results").innerHTML =
-            "Extracting text from Figma...";
-          document.getElementById("summary").innerHTML = "";
-          parent.postMessage({ pluginMessage: { type: "spell-check" } }, "*");
-        };
+  function showHomePage() {
+    resultsPage.classList.add("hidden");
+    homePage.classList.remove("hidden");
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("summary").innerHTML = "";
+  }
 
-        fetch(IGNORE_LIST_ENDPOINT)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Network response was not ok for ignore list");
-            }
-            return response.json();
-          })
-          .then((data) => {
-            ignoreList = data.ignore_list.map((w) => w.toLowerCase());
-            console.log("Ignore list loaded:", ignoreList);
-          })
-          .catch((err) => console.error("Failed to load ignore list:", err));
-      };
-      async function processSpellCheckWithAI(allTextData) {
-        const resultsDiv = document.getElementById("results");
-        const spellCheckButton = document.getElementById("spellCheckButton");
-        try {
-          resultsDiv.innerHTML = `Analyzing ${allTextData.length} text layers...`;
+  // Progressive messages
+  function updateProgressMessage(message) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = `<div class="loading"><div class="spinner"></div> ${message}</div>`;
+  }
 
-          // This map is crucial for finding all nodes a specific WORD appears in
-          const wordToNodeIds = new Map();
-          allTextData.forEach((node) => {
-            const cleanText = node.text
-              .replace(/\n/g, " ")
-              .replace(/^→\s*/, "");
-            const words = cleanText.match(/[a-zA-Z']+/g) || [];
-            words.forEach((word) => {
-              if (!wordToNodeIds.has(word)) {
-                wordToNodeIds.set(word, new Set());
-              }
-              wordToNodeIds.get(word).add(node.id);
-            });
-          });
+    window.onload = () => {
+    const typoCheckButton = document.getElementById("typoCheckButton");
+    const uxCheckButton = document.getElementById("uxCheckButton");
+    const backButton = document.getElementById("backButton");
 
-          const uniqueTextToNodeIds = new Map();
-          allTextData.forEach((node) => {
-            const text = node.text
-              .replace(/\n/g, " ")
-              .replace(/^→\s*/, "")
-              .trim();
-            if (!/[a-zA-Z]/.test(text)) {
-              return;
-            }
-            if (!uniqueTextToNodeIds.has(text)) {
-              uniqueTextToNodeIds.set(text, []);
-            }
-            uniqueTextToNodeIds.get(text).push(node.id);
-          });
-          const uniqueTexts = Array.from(uniqueTextToNodeIds.keys());
+    function runCheck(checkType) {
+        if (isLoading) return;
+        isLoading = true;
+        typoCheckButton.disabled = true;
+        uxCheckButton.disabled = true;
+        
+        lastCheckType = checkType;
+        const title = checkType === 'TYPO_BRAND' ? 'Typos & Brand Rules' : 'Content Suggestions';
+        document.getElementById("resultsTitle").innerText = title;
+        document.getElementById("results").innerHTML = `<div class="loading"><div class="spinner"></div> Checking...</div>`;
+        document.getElementById("summary").innerHTML = "";
 
-          if (uniqueTexts.length === 0) {
-            renderTable([]);
-            return;
-          }
+        parent.postMessage({ pluginMessage: { type: "run-check", payload: { checkType } } }, "*");
+    }
 
-          resultsDiv.innerHTML = `Found ${uniqueTexts.length} unique text snippets. Checking with AI...`;
+    typoCheckButton.onclick = () => runCheck('TYPO_BRAND');
+    uxCheckButton.onclick = () => runCheck('UX_WRITING');
+    backButton.onclick = showHomePage;
+  };
 
-          const response = await fetch(AI_API_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ texts: uniqueTexts }),
-          });
-          if (!response.ok) {
-            throw new Error(`AI server error: ${response.statusText}`);
-          }
-          const aiData = await response.json();
 
-          let correctionsList = [];
-          aiData.results.forEach((result, index) => {
+    async function processCheckResponse(payload) {
+      const { textData, checkType } = payload;
+      const resultsDiv = document.getElementById("results");
+      const typoCheckButton = document.getElementById("typoCheckButton");
+      const uxCheckButton = document.getElementById("uxCheckButton");
+
+      try {
+        showResultsPage();
+        
+        const uniqueTexts = Array.from(new Set(textData.map(d => d.text.trim().replace(/\n/g, ' ').replace(/^→\s*/, ''))));
+        
+        const endpoint = checkType === 'TYPO_BRAND' ? SPELL_CHECK_ENDPOINT : CONTENT_CHECK_ENDPOINT;
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ texts: uniqueTexts })
+        });
+
+        if (!response.ok) { throw new Error(`AI server error: ${response.statusText}`); }
+        const aiData = await response.json();
+
+        let correctionsList = [];
+        aiData.results.forEach((result, index) => {
             if (!result.is_correct && result.corrections) {
-              const originalSentence = uniqueTexts[index];
-
-              result.corrections.forEach((correction) => {
-                const originalWord =
-                  correction.original ||
-                  (correction.type === "UX_WRITING" ? originalSentence : "");
-                if (ignoreList.includes(originalWord.toLowerCase())) return;
-
-                correctionsList.push({
-                  id: `${originalSentence}-${originalWord}-${correction.suggestion}`,
-                  originalSentence: originalSentence,
-                  originalWord: originalWord,
-                  suggestion: correction.suggestion,
-                  type: correction.type,
-                  nodes: Array.from(
-                    wordToNodeIds.get(originalWord) ||
-                      uniqueTextToNodeIds.get(originalSentence) ||
-                      []
-                  ),
+                const originalSentence = uniqueTexts[index];
+                const nodeIds = textData.filter(d => d.text.trim().replace(/\n/g, ' ').replace(/^→\s*/, '') === originalSentence).map(d => d.id);
+                
+                result.corrections.forEach(correction => {
+                    correctionsList.push({
+                        id: `${originalSentence}-${correction.original}-${correction.suggestion}`,
+                        originalSentence: originalSentence,
+                        originalWord: correction.original,
+                        suggestion: correction.suggestion,
+                        type: correction.type,
+                        nodes: nodeIds
+                    });
                 });
-              });
             }
-          });
+        });
+        
+        allCorrections = correctionsList;
+        renderTable(allCorrections, checkType);
 
-          allCorrections = correctionsList;
-          renderTable(allCorrections);
-        } catch (error) {
-          console.error("A JavaScript error occurred:", error);
-          resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the Figma console.</strong>`;
-        } finally {
+      } catch (error) {
+          console.error("An error occurred:", error);
+          resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the console.</strong>`;
+      } finally {
           isLoading = false;
-          spellCheckButton.disabled = false;
-          spellCheckButton.innerHTML = "Check with AI";
-        }
+          typoCheckButton.disabled = false;
+          uxCheckButton.disabled = false;
       }
+  }
+  
+  function renderTable(corrections, checkType) {
+      const summaryDiv = document.getElementById("summary");
+      const resultsDiv = document.getElementById("results");
+      const uniqueErrorCount = corrections.length;
 
-      function renderTable(corrections) {
-        const summaryDiv = document.getElementById("summary");
-        const resultsDiv = document.getElementById("results");
-        const uniqueErrorCount = corrections.length;
-
-        if (uniqueErrorCount > 0) {
+      if (uniqueErrorCount > 0) {
           summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} suggestions.</strong>`;
-          let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>Typos & Brand Rules</th><th>Grammar & UX Writing</th></tr></thead><tbody>`;
+          let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>Suggestion</th></tr></thead><tbody>`;
 
           corrections.forEach((correction, index) => {
-            const {
-              id,
-              originalSentence,
-              originalWord,
-              suggestion,
-              type,
-              nodes,
-            } = correction;
-            const instanceCount = nodes.length;
+              const { id, originalSentence, originalWord, suggestion, nodes } = correction;
+              const instanceCount = nodes.length;
 
-            const sentenceHTML = originalSentence.replace(
-              new RegExp(
-                `\\b${originalWord.replace(
-                  /([.*+?^=!:${}()|\[\]\/\\])/g,
-                  "\\$1"
-                )}\\b`,
-                "gi"
-              ),
-              `<strong class="highlight">${originalWord}</strong>`
-            );
+              const sentenceHTML = originalSentence.replace(
+                  new RegExp(`\\b${originalWord.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")}\\b`, 'gi'), 
+                  `<strong class="highlight">${originalWord}</strong>`
+              );
 
-            tableHTML += `<tr id="row-${id}">
-                                <td>${index + 1}</td>
-                                <td class="original-text-cell" 
-                                    data-word="${originalWord}"
-                                    data-instance-count="${instanceCount}"
-                                    data-node-ids='${JSON.stringify(nodes)}'>
-                                    <div>${sentenceHTML}</div>
-                                    ${
-                                      instanceCount > 1 && type === "TYPO_BRAND"
-                                        ? `
-                                    <div class="navigation-controls">
-                                        <button class="nav-btn" data-action="prev" data-word="${originalWord}" title="Previous instance">‹</button>
-                                        <span class="navigation-info" id="nav-${originalWord}">1/${instanceCount}</span>
-                                        <button class="nav-btn" data-action="next" data-word="${originalWord}" title="Next instance">›</button>
-                                    </div>
-                                    `
-                                        : ""
-                                    }
-                                </td>
-                                <td>`; // Typos Column
-            if (type === "TYPO_BRAND") {
-              tableHTML += `<button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
-                nodes
-              )}'>${suggestion}</button>
-                                  <button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}" title="Ignore this word">Ignore</button>`;
-            }
-            tableHTML += `</td>
-                                <td>`; // UX Writing Column
-            if (type === "UX_WRITING") {
-              tableHTML += `<button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalSentence}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
-                nodes
-              )}'>${suggestion}</button>
-                                  <button class="ignore-btn" data-correction-id="${id}" data-word="${originalSentence}" title="Ignore this suggestion">Ignore</button>`;
-            }
-            tableHTML += `</td>
-                              </tr>`;
+              tableHTML += `<tr id="row-${id}">
+                              <td>${index + 1}</td>
+                              <td class="original-text-cell" 
+                                  data-word="${originalWord}"
+                                  data-instance-count="${instanceCount}"
+                                  data-node-ids='${JSON.stringify(nodes)}'>
+                                  <div>${sentenceHTML}</div>
+                                  ${ instanceCount > 1 ? `
+                                  <div class="navigation-controls">
+                                      <button class="nav-btn" data-action="prev" data-word="${originalWord}" title="Previous instance">‹</button>
+                                      <span class="navigation-info" id="nav-${originalWord}">1/${instanceCount}</span>
+                                      <button class="nav-btn" data-action="next" data-word="${originalWord}" title="Next instance">›</button>
+                                  </div>
+                                  ` : "" }
+                              </td>
+                              <td>
+                                <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(nodes)}'>${suggestion}</button>
+                                ${ checkType === 'TYPO_BRAND' ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}" title="Ignore this word">Ignore</button>` : "" }
+                              </td>
+                            </tr>`;
           });
 
           tableHTML += `</tbody></table>`;
           resultsDiv.innerHTML = tableHTML;
-          parent.postMessage(
-            {
-              pluginMessage: {
-                type: "resize-window",
-                width: 1200,
-                height: Math.min(900, 350 + uniqueErrorCount * 65),
-              },
-            },
-            "*"
-          );
-        } else {
+      } else {
           summaryDiv.innerHTML = "";
-          resultsDiv.innerHTML = "No spelling errors found! ✓";
-          parent.postMessage(
-            { pluginMessage: { type: "clear-navigation" } },
-            "*"
-          );
-        }
+          resultsDiv.innerHTML = "No issues found! ✓";
       }
+  }
 
       window.onmessage = async (event) => {
         const { type, payload } = event.data.pluginMessage;
         switch (type) {
           case "text-to-check":
-            await processSpellCheckWithAI(payload);
+            await processCheckResponse(payload);
             break;
           case "navigation-update":
             const { word, currentIndex, totalInstances } = payload;
@@ -527,7 +517,14 @@
               }
             }, 1000);
             break;
-        }
+          case "no-selection":
+            isLoading = false;
+            document.getElementById("typoCheckButton").disabled = false;
+            document.getElementById("uxCheckButton").disabled = false;
+            document.getElementById("home-status").innerHTML = `<strong style="color:red;">Please select one or more frames to check.</strong>`;
+            showHomePage();
+            break;
+        } 
       };
 
       function handleNavigationClick(targetCell) {

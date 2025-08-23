@@ -45,20 +45,40 @@ function clearNavigationState(): void {
   }
 }
 
-// Collect all text nodes from current page 
 async function collectTextNodesData(): Promise<TextNodeData[]> {
-  const textNodes = figma.currentPage.findAllWithCriteria({ types: ["TEXT"] });
+  const selection = figma.currentPage.selection;
+  if (selection.length === 0) {
+    figma.ui.postMessage({ type: "no-selection" });
+    return [];
+  }
+
+  let textNodes: readonly TextNode[] = [];
+  selection.forEach(node => {
+    // Check if the node is a type that can contain text nodes
+    if (node.type === "FRAME" || node.type === "GROUP" || node.type === "SECTION" || node.type === "COMPONENT" || node.type === "INSTANCE") {
+      // Use 'findAllWithCriteria' which is safer than a simple 'children' loop
+      textNodes = textNodes.concat(node.findAllWithCriteria({ types: ["TEXT"] }));
+    } else if (node.type === "TEXT") {
+      textNodes = textNodes.concat([node]);
+    }
+  });
+
+  if (textNodes.length === 0) {
+      figma.notify("No text layers found in your selection.");
+      return [];
+  }
+
   return textNodes.map((node) => ({
     id: node.id,
     text: node.characters,
   }));
 }
 
-// Handle spell check initiation
-async function handleSpellCheck(): Promise<void> {
-  clearNavigationState();
+async function handleRunCheck(checkType: 'TYPO_BRAND' | 'UX_WRITING'): Promise<void> {
   const allTextData = await collectTextNodesData();
-  figma.ui.postMessage({ type: "text-to-check", payload: allTextData });
+  if (allTextData.length > 0) {
+    figma.ui.postMessage({ type: "text-to-check", payload: { textData: allTextData, checkType } });
+  }
 }
 
 // Smart navigation to word instances with cycling
@@ -214,8 +234,8 @@ async function main(): Promise<void> {
 
   figma.ui.onmessage = async (msg) => {
     switch (msg.type) {
-      case "spell-check":
-        await handleSpellCheck();
+      case "run-check":
+        await handleRunCheck(msg.payload.checkType);
         break;
 
       case "navigate-to-word":
