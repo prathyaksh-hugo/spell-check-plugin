@@ -2,19 +2,28 @@
 <html>
   <head>
     <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segma UI", Roboto,
-          Helvetica, Arial, sans-serif;
-        margin: 16px;
-        font-size: 14px;
-        background: linear-gradient(135deg, #d0eaea 0%, #f6f6ec 100%);
-        min-height: 100vh;
-      }
-      h1 {
-        font-size: 24px;
-        text-align: center;
-        margin-bottom: 20px;
-      }
+    body {
+      font-family: "New Rubrik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(to bottom, #ACDADB, #F0F0E0);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    html, body {
+  overscroll-behavior-x: none; /* Prevents back/forward swipe */
+  overflow-x: hidden;          /* No horizontal scroll */
+}
+    h1 {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #0B3C58;
+      text-align: center;
+    }
       .plugin-description {
         font-size: 13px;
         color: #6c757d;
@@ -255,58 +264,88 @@
         background-color: #e9ecef;
         border-color: #adb5bd;
       }
-        .page {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      padding: 16px;
-      box-sizing: border-box;
-      background: linear-gradient(135deg, #d0eaea 0%, #f6f6ec 100%);
-      transition: transform 0.3s ease-in-out;
-  }
-  .page.hidden {
-      transform: translateX(100%);
-  }
-  .page.active {
-      transform: translateX(0);
-  }
-  .back-button {
-      background: none;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-      margin-bottom: 16px;
-  }
-  .button-group {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-top: 24px;
-  }
-  .check-button {
-    flex: 1;
-    background-color: #2c9acf;
-    color: white;
-    border: none;
-    padding: 14px 0px;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
-  .check-button.secondary {
-      background-color: #6c757d;
-  }
-  .check-button:hover {
-      opacity: 0.9;
-  }
-  .check-button:disabled {
-    background-color: #94a3b8;
-    cursor: not-allowed;
-  }
-    
+      .page {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        padding: 16px;
+        box-sizing: border-box;
+        background: linear-gradient(135deg, #d0eaea 0%, #f6f6ec 100%);
+        transition: transform 0.3s ease-in-out;
+      }
+      .page.hidden {
+        transform: translateX(100%);
+      }
+      .page.active {
+        transform: translateX(0);
+      }
+      .back-button {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        margin-bottom: 16px;
+      }
+      .button-group {
+        font-family: "New Rubrik", sans-serif !important;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 24px;
+      }
+      .check-button {
+        flex: 1;
+        background-color: #0B3C58;
+        color: white;
+        border: none;
+        padding: 14px 0px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+      }
+      .check-button.secondary {
+      background-color: white;
+      color: #0B3C58;
+      border: 2px solid #0B3C58;
+      }
+      .check-button.secondary:hover {
+        background-color: #f5f5f5;
+      }
+      .check-button:hover {
+        opacity: 0.9;
+      }
+      .check-button:disabled {
+        background-color: #94a3b8;
+        cursor: not-allowed;
+      }
+
+      .back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "New Rubrik", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0B3C58;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.back-button:hover {
+  background: rgba(11, 60, 88, 0.08); /* subtle hover */
+}
+
+.back-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
       @keyframes spin {
         0% {
           transform: rotate(0deg);
@@ -318,214 +357,315 @@
     </style>
   </head>
   <body>
-<div id="homePage" class="page active">
-    <h1>AI Spell Check</h1>
-    <p class="plugin-description">
-      Select one or more frames, then choose a check to run.
-    </p>
-    <div class="button-group">
-        <button id="typoCheckButton" class="check-button">Check Typos & Rules</button>
-        <button id="uxCheckButton" class="check-button secondary">Improve Content</button>
+    <!-- Page 1: Home Screen -->
+    <div id="homePage" class="page active">
+      <h1>AI Spell Check & Content Correction</h1>
+      <p class="plugin-description">
+        Select one or more frames, then choose a check to run.
+      </p>
+      <div class="button-group">
+        <button id="typoCheckButton" class="check-button">
+          Check Typos & Rules
+        </button>
+        <button id="uxCheckButton" class="check-button secondary">
+          Improve Content
+        </button>
+      </div>
+      <div id="home-status"></div>
     </div>
-    <div id="home-status"></div>
+
+    <!-- Page 2: Results Screen -->
+    <div id="resultsPage" class="page hidden">
+      <!-- <button id="backButton" class="back-button">←Back</button> -->
+       <div id="backButton" class="back-button">
+  <span class="back-icon">←</span>
+  <span class="back-text">Back</span>
 </div>
 
-<div id="resultsPage" class="page hidden">
-    <button id="backButton" class="back-button">← Back</button>
-    <h2 id="resultsTitle"></h2>
-    <div id="summary"></div>
-    <div id="results"></div>
-</div>
+      <h2 id="resultsTitle"></h2>
+      <div id="summary"></div>
+      <div id="results"></div>
+    </div>
 
-<script>
-  let isLoading = false;
-  let allCorrections = [];
-  let lastCheckType = null;
+    <script>
+      let isLoading = false;
+      let allCorrections = [];
+      let lastCheckType = null;
+      let currentlyEditing = null;
+      let clickTimer = null;
+      let ignoreList = [];
 
-  const NGROK_BASE_URL = "https://7f13142543eb.ngrok-free.app"; // replace if needed
-  const SPELL_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/spell-check`;
-  const CONTENT_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/content-check`;
+      const NGROK_BASE_URL = "https://b4180666c9e0.ngrok-free.app"; // Replace if needed
+      const SPELL_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/spell-check`;
+      const CONTENT_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/content-check`;
+      const IGNORE_LIST_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore-list`;
+      const ADD_TO_IGNORE_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore`;
 
-  const homePage = document.getElementById("homePage");
-  const resultsPage = document.getElementById("resultsPage");
+      const homePage = document.getElementById("homePage");
+      const resultsPage = document.getElementById("resultsPage");
 
-  function showResultsPage() {
-    homePage.classList.add("hidden");
-    resultsPage.classList.remove("hidden");
-  }
+      function showResultsPage() {
+        homePage.classList.remove("active");
+        homePage.classList.add("hidden");
+        resultsPage.classList.remove("hidden");
+        resultsPage.classList.add("active");
+      }
 
-  function showHomePage() {
-    resultsPage.classList.add("hidden");
-    homePage.classList.remove("hidden");
-    document.getElementById("results").innerHTML = "";
-    document.getElementById("summary").innerHTML = "";
-  }
+      function showHomePage() {
+        resultsPage.classList.remove("active");
+        resultsPage.classList.add("hidden");
+        homePage.classList.remove("hidden");
+        homePage.classList.add("active");
+      }
 
-  // Progressive messages
-  function updateProgressMessage(message) {
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = `<div class="loading"><div class="spinner"></div> ${message}</div>`;
-  }
+      window.onload = () => {
+        const typoCheckButton = document.getElementById("typoCheckButton");
+        const uxCheckButton = document.getElementById("uxCheckButton");
+        const backButton = document.getElementById("backButton");
 
-    window.onload = () => {
-    const typoCheckButton = document.getElementById("typoCheckButton");
-    const uxCheckButton = document.getElementById("uxCheckButton");
-    const backButton = document.getElementById("backButton");
+        function runCheck(checkType) {
+          if (isLoading) return;
+          isLoading = true;
+          typoCheckButton.disabled = true;
+          uxCheckButton.disabled = true;
 
-    function runCheck(checkType) {
-        if (isLoading) return;
-        isLoading = true;
-        typoCheckButton.disabled = true;
-        uxCheckButton.disabled = true;
-        
-        lastCheckType = checkType;
-        const title = checkType === 'TYPO_BRAND' ? 'Typos & Brand Rules' : 'Content Suggestions';
-        document.getElementById("resultsTitle").innerText = title;
-        document.getElementById("results").innerHTML = `<div class="loading"><div class="spinner"></div> Checking...</div>`;
-        document.getElementById("summary").innerHTML = "";
+          lastCheckType = checkType;
+          const title =
+            checkType === "TYPO_BRAND"
+              ? "Typos & Brand Rules"
+              : "Content Suggestions";
+          document.getElementById("resultsTitle").innerText = title;
+          document.getElementById(
+            "results"
+          ).innerHTML = `<div class="loading"><div class="spinner"></div> Checking...</div>`;
+          document.getElementById("summary").innerHTML = "";
 
-        parent.postMessage({ pluginMessage: { type: "run-check", payload: { checkType } } }, "*");
-    }
+                  showResultsPage();
+        updateProgressMessage("Requesting text from Figma...");
+          parent.postMessage(
+            { pluginMessage: { type: "run-check", payload: { checkType } } },
+            "*"
+          );
+        }
 
-    typoCheckButton.onclick = () => runCheck('TYPO_BRAND');
-    uxCheckButton.onclick = () => runCheck('UX_WRITING');
-    backButton.onclick = showHomePage;
-  };
+        typoCheckButton.onclick = () => runCheck("TYPO_BRAND");
+        uxCheckButton.onclick = () => runCheck("UX_WRITING");
+        backButton.onclick = showHomePage;
 
+        fetch(IGNORE_LIST_ENDPOINT)
+          .then((response) => response.json())
+          .then((data) => {
+            ignoreList = data.ignore_list.map((w) => w.toLowerCase());
+          })
+          .catch((err) => console.error("Failed to load ignore list:", err));
+      };
 
-    async function processCheckResponse(payload) {
-      const { textData, checkType } = payload;
-      const resultsDiv = document.getElementById("results");
-      const typoCheckButton = document.getElementById("typoCheckButton");
-      const uxCheckButton = document.getElementById("uxCheckButton");
+      async function processCheckResponse(payload) {
+        const { textData, checkType, selectionId } = payload;
+        const resultsDiv = document.getElementById("results");
+        const typoCheckButton = document.getElementById("typoCheckButton");
+        const uxCheckButton = document.getElementById("uxCheckButton");
 
-      try {
-        showResultsPage();
-        
-        const uniqueTexts = Array.from(new Set(textData.map(d => d.text.trim().replace(/\n/g, ' ').replace(/^→\s*/, ''))));
-        
-        const endpoint = checkType === 'TYPO_BRAND' ? SPELL_CHECK_ENDPOINT : CONTENT_CHECK_ENDPOINT;
+        try {
+          showResultsPage();
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ texts: uniqueTexts })
-        });
+          const uniqueTexts = Array.from(
+            new Set(
+              textData.map((d) =>
+                d.text.trim().replace(/\n/g, " ").replace(/^→\s*/, "")
+              )
+            )
+          );
 
-        if (!response.ok) { throw new Error(`AI server error: ${response.statusText}`); }
-        const aiData = await response.json();
+          const endpoint =
+            checkType === "TYPO_BRAND"
+              ? SPELL_CHECK_ENDPOINT
+              : CONTENT_CHECK_ENDPOINT;
 
-        let correctionsList = [];
-        aiData.results.forEach((result, index) => {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texts: uniqueTexts }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`AI server error: ${response.statusText}`);
+          }
+          const aiData = await response.json();
+
+          let correctionsList = [];
+          aiData.results.forEach((result, index) => {
             if (!result.is_correct && result.corrections) {
-                const originalSentence = uniqueTexts[index];
-                const nodeIds = textData.filter(d => d.text.trim().replace(/\n/g, ' ').replace(/^→\s*/, '') === originalSentence).map(d => d.id);
-                
-                result.corrections.forEach(correction => {
-                    correctionsList.push({
-                        id: `${originalSentence}-${correction.original}-${correction.suggestion}`,
-                        originalSentence: originalSentence,
-                        originalWord: correction.original,
-                        suggestion: correction.suggestion,
-                        type: correction.type,
-                        nodes: nodeIds
-                    });
-                });
-            }
-        });
-        
-        allCorrections = correctionsList;
-        renderTable(allCorrections, checkType);
+              const originalSentence = uniqueTexts[index];
+              const nodeIds = textData
+                .filter(
+                  (d) =>
+                    d.text.trim().replace(/\n/g, " ").replace(/^→\s*/, "") ===
+                    originalSentence
+                )
+                .map((d) => d.id);
 
-      } catch (error) {
+              result.corrections.forEach((correction) => {
+                const originalWord = correction.original || originalSentence;
+                if (ignoreList.includes(originalWord.toLowerCase())) return;
+
+                correctionsList.push({
+                  id: `${originalSentence}-${originalWord}-${correction.suggestion}`,
+                  originalSentence: originalSentence,
+                  originalWord: originalWord,
+                  suggestion: correction.suggestion,
+                  type: correction.type,
+                  nodes: nodeIds,
+                });
+              });
+            }
+          });
+
+          allCorrections = correctionsList;
+          parent.postMessage({ 
+            pluginMessage: { 
+                type: "save-results-to-cache", 
+                payload: { selectionId, checkType, corrections: allCorrections } 
+            } 
+        }, "*");
+        
+        renderTable(allCorrections, checkType);
+          renderTable(allCorrections, checkType);
+        } catch (error) {
           console.error("An error occurred:", error);
           resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the console.</strong>`;
-      } finally {
+        } finally {
           isLoading = false;
           typoCheckButton.disabled = false;
           uxCheckButton.disabled = false;
+        }
       }
-  }
-  
-  function renderTable(corrections, checkType) {
-      const summaryDiv = document.getElementById("summary");
-      const resultsDiv = document.getElementById("results");
-      const uniqueErrorCount = corrections.length;
 
-      if (uniqueErrorCount > 0) {
+      function renderTable(corrections, checkType) {
+        const summaryDiv = document.getElementById("summary");
+        const resultsDiv = document.getElementById("results");
+        const uniqueErrorCount = corrections.length;
+
+        if (uniqueErrorCount > 0) {
           summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} suggestions.</strong>`;
-          let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>Suggestion</th></tr></thead><tbody>`;
+          const suggestionColumnTitle =
+            checkType === "TYPO_BRAND"
+              ? "Typos & Brand Rules"
+              : "Grammar & UX Writing";
+          let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>${suggestionColumnTitle}</th></tr></thead><tbody>`;
 
           corrections.forEach((correction, index) => {
-              const { id, originalSentence, originalWord, suggestion, nodes } = correction;
-              const instanceCount = nodes.length;
+            const { id, originalSentence, originalWord, suggestion, nodes } =
+              correction;
+            const instanceCount = nodes.length;
 
-              const sentenceHTML = originalSentence.replace(
-                  new RegExp(`\\b${originalWord.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")}\\b`, 'gi'), 
-                  `<strong class="highlight">${originalWord}</strong>`
-              );
+            const sentenceHTML = originalSentence.replace(
+              new RegExp(
+                `\\b${originalWord.replace(
+                  /([.*+?^=!:${}()|\[\]\/\\])/g,
+                  "\\$1"
+                )}\\b`,
+                "gi"
+              ),
+              `<strong class="highlight">${originalWord}</strong>`
+            );
 
-              tableHTML += `<tr id="row-${id}">
+            tableHTML += `<tr id="row-${id}">
                               <td>${index + 1}</td>
                               <td class="original-text-cell" 
                                   data-word="${originalWord}"
                                   data-instance-count="${instanceCount}"
                                   data-node-ids='${JSON.stringify(nodes)}'>
                                   <div>${sentenceHTML}</div>
-                                  ${ instanceCount > 1 ? `
+                                  ${
+                                    instanceCount > 1
+                                      ? `
                                   <div class="navigation-controls">
                                       <button class="nav-btn" data-action="prev" data-word="${originalWord}" title="Previous instance">‹</button>
                                       <span class="navigation-info" id="nav-${originalWord}">1/${instanceCount}</span>
                                       <button class="nav-btn" data-action="next" data-word="${originalWord}" title="Next instance">›</button>
                                   </div>
-                                  ` : "" }
+                                  `
+                                      : ""
+                                  }
                               </td>
                               <td>
-                                <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(nodes)}'>${suggestion}</button>
-                                ${ checkType === 'TYPO_BRAND' ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}" title="Ignore this word">Ignore</button>` : "" }
+                                <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
+              nodes
+            )}'>${suggestion}</button>
+                                ${
+                                  checkType === "TYPO_BRAND"
+                                    ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}" title="Ignore this word">Ignore</button>`
+                                    : ""
+                                }
                               </td>
                             </tr>`;
           });
 
           tableHTML += `</tbody></table>`;
           resultsDiv.innerHTML = tableHTML;
-      } else {
+                    parent.postMessage(
+            {
+              pluginMessage: {
+                type: "resize-window",
+                width: 800,
+                height: Math.min(900, 350 + uniqueErrorCount * 65),
+              },
+            },
+            "*"
+          );
+        } else {
           summaryDiv.innerHTML = "";
           resultsDiv.innerHTML = "No issues found! ✓";
+        }
       }
-  }
 
-      window.onmessage = async (event) => {
-        const { type, payload } = event.data.pluginMessage;
-        switch (type) {
-          case "text-to-check":
-            await processCheckResponse(payload);
-            break;
-          case "navigation-update":
-            const { word, currentIndex, totalInstances } = payload;
-            const navElement = document.getElementById(`nav-${word}`);
-            if (navElement && totalInstances > 1) {
-              navElement.textContent = `${currentIndex}/${totalInstances}`;
-            }
-            break;
-          case "re-check-document":
-            const spellCheckButton =
-              document.getElementById("spellCheckButton");
-            setTimeout(() => {
-              if (!isLoading) {
-                spellCheckButton.click();
-              }
-            }, 1000);
-            break;
-          case "no-selection":
-            isLoading = false;
-            document.getElementById("typoCheckButton").disabled = false;
-            document.getElementById("uxCheckButton").disabled = false;
-            document.getElementById("home-status").innerHTML = `<strong style="color:red;">Please select one or more frames to check.</strong>`;
-            showHomePage();
-            break;
-        } 
-      };
+window.onmessage = async (event) => {
+  const { type, payload } = event.data.pluginMessage;
+
+  if (type === "text-to-check") {
+    updateProgressMessage(`Found ${payload.textData.length} text layers. Analyzing with AI...`);
+    await processCheckResponse(payload);
+  } else if (type === "cached-results-found") {
+    console.log("Displaying cached results.");
+    allCorrections = payload.corrections;
+    renderTable(allCorrections, payload.checkType);
+    isLoading = false;
+    document.getElementById("typoCheckButton").disabled = false;
+    document.getElementById("uxCheckButton").disabled = false;
+    showResultsPage();
+  } else if (type === "no-selection") {
+    isLoading = false;
+    document.getElementById("typoCheckButton").disabled = false;
+    document.getElementById("uxCheckButton").disabled = false;
+    document.getElementById(
+      "home-status"
+    ).innerHTML = `<strong style="color:red;">Please select one or more frames to check.</strong>`;
+    showHomePage();
+  } else if (type === "navigation-update") {
+    const { word, currentIndex, totalInstances } = payload;
+    const navElement = document.getElementById(`nav-${word}`);
+    if (navElement && totalInstances > 1) {
+      navElement.textContent = `${currentIndex}/${totalInstances}`;
+    }
+  } else if (type === "re-check-document") {
+    if (!isLoading && lastCheckType) {
+      console.log(
+        `Document changed. Re-running last check: ${lastCheckType}`
+      );
+      if (lastCheckType === "TYPO_BRAND") {
+        document.getElementById("typoCheckButton").click();
+      } else if (lastCheckType === "UX_WRITING") {
+        document.getElementById("uxCheckButton").click();
+      }
+    }
+  }
+};
+
+function updateProgressMessage(message) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = `<div class="loading"><div class="spinner"></div> ${message}</div>`;
+}
 
       function handleNavigationClick(targetCell) {
         const word = targetCell.dataset.word;
@@ -601,7 +741,7 @@
             allCorrections = allCorrections.filter(
               (c) => c.originalWord !== word
             );
-            renderTable(allCorrections);
+            renderTable(allCorrections, lastCheckType);
           }
           exitEditMode(cell, originalHTML);
         };
@@ -633,19 +773,12 @@
           const correctionId = target.dataset.correctionId;
           const word = target.dataset.word;
           allCorrections = allCorrections.filter((c) => c.id !== correctionId);
-          renderTable(allCorrections);
+          renderTable(allCorrections, lastCheckType);
           fetch(ADD_TO_IGNORE_ENDPOINT, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ word: word }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              console.log(data.status);
-              if (!ignoreList.includes(word.toLowerCase())) {
-                ignoreList.push(word.toLowerCase());
-              }
-            });
+          });
           return;
         }
         if (target.classList.contains("suggestion-btn")) {
@@ -663,7 +796,7 @@
             "*"
           );
           allCorrections = allCorrections.filter((c) => c.id !== correctionId);
-          renderTable(allCorrections);
+          renderTable(allCorrections, lastCheckType);
           return;
         }
         if (target.classList.contains("nav-btn")) {
@@ -689,14 +822,6 @@
           }
         }
       });
-
-      document
-        .getElementById("results")
-        .addEventListener("selectstart", (event) => {
-          if (event.target.closest(".original-text-cell")) {
-            event.preventDefault();
-          }
-        });
     </script>
   </body>
 </html>

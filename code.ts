@@ -21,6 +21,8 @@ interface NavigateToWordPayload {
   nodeIds?: string[];
 }
 
+const CACHE_KEY = 'spellCheckResultCache';
+
 // // Debounced notification function
 function showDebouncedNotification(message: string, delay: number = 500): void {
   // Cancel any existing notification timeout
@@ -45,18 +47,21 @@ function clearNavigationState(): void {
   }
 }
 
-async function collectTextNodesData(): Promise<TextNodeData[]> {
+// In src/code.ts
+
+async function collectTextNodesData(): Promise<{ selectionId: string; textData: TextNodeData[] }> {
   const selection = figma.currentPage.selection;
   if (selection.length === 0) {
     figma.ui.postMessage({ type: "no-selection" });
-    return [];
+    return { selectionId: '', textData: [] };
   }
+
+  // Create a unique "fingerprint" for the current selection.
+  const selectionId = selection.map(node => node.id).sort().join(',');
 
   let textNodes: readonly TextNode[] = [];
   selection.forEach(node => {
-    // Check if the node is a type that can contain text nodes
     if (node.type === "FRAME" || node.type === "GROUP" || node.type === "SECTION" || node.type === "COMPONENT" || node.type === "INSTANCE") {
-      // Use 'findAllWithCriteria' which is safer than a simple 'children' loop
       textNodes = textNodes.concat(node.findAllWithCriteria({ types: ["TEXT"] }));
     } else if (node.type === "TEXT") {
       textNodes = textNodes.concat([node]);
@@ -65,22 +70,53 @@ async function collectTextNodesData(): Promise<TextNodeData[]> {
 
   if (textNodes.length === 0) {
       figma.notify("No text layers found in your selection.");
-      return [];
+      return { selectionId, textData: [] };
   }
 
-  return textNodes.map((node) => ({
+  const textData = textNodes.map((node) => ({
     id: node.id,
     text: node.characters,
   }));
+  
+  return { selectionId, textData };
 }
 
 async function handleRunCheck(checkType: 'TYPO_BRAND' | 'UX_WRITING'): Promise<void> {
-  const allTextData = await collectTextNodesData();
-  if (allTextData.length > 0) {
-    figma.ui.postMessage({ type: "text-to-check", payload: { textData: allTextData, checkType } });
+  navigationState = {};
+
+   figma.ui.postMessage({ type: "extraction-started", payload: { checkType } });
+  const { selectionId, textData } = await collectTextNodesData();
+
+  
+
+  if (textData.length > 0) {
+    // Check clientStorage for cached results
+    const cache = await figma.clientStorage.getAsync(CACHE_KEY) || {};
+    const cacheId = `${selectionId}-${checkType}`;
+    
+    if (cache[cacheId]) {
+      console.log("Cache HIT. Sending stored results to UI.");
+      // If we find results, send them directly to the UI
+      figma.ui.postMessage({ type: "cached-results-found", payload: { corrections: cache[cacheId], checkType } });
+    } else {
+      console.log("Cache MISS. Proceeding with API check.");
+      // If no results, tell the UI to make the API call
+      figma.ui.postMessage({ type: "text-to-check", payload: { selectionId, textData, checkType } });
+    }
   }
 }
 
+// Function to save new results to the cache
+async function handleSaveResultsToCache(payload: { selectionId: string; checkType: string; corrections: any[] }): Promise<void> {
+    const { selectionId, checkType, corrections } = payload;
+    const cache = await figma.clientStorage.getAsync(CACHE_KEY) || {};
+    const cacheId = `${selectionId}-${checkType}`;
+    
+    cache[cacheId] = corrections;
+    
+    await figma.clientStorage.setAsync(CACHE_KEY, cache);
+    console.log(`Saved results for ${cacheId} to client storage.`);
+}
 // Smart navigation to word instances with cycling
 async function handleNavigateToWord(payload: NavigateToWordPayload): Promise<void> {
   const { word, nodeIds } = payload;
@@ -236,6 +272,10 @@ async function main(): Promise<void> {
     switch (msg.type) {
       case "run-check":
         await handleRunCheck(msg.payload.checkType);
+        break;
+
+      case "save-results-to-cache":
+        await handleSaveResultsToCache(msg.payload);
         break;
 
       case "navigate-to-word":
