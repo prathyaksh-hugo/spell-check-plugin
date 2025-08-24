@@ -395,7 +395,7 @@
       let clickTimer = null;
       let ignoreList = [];
 
-      const NGROK_BASE_URL = "https://b4180666c9e0.ngrok-free.app"; // Replace if needed
+      const NGROK_BASE_URL = "https://b38c9ac3c290.ngrok-free.app"; // Replace if needed
       const SPELL_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/spell-check`;
       const CONTENT_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/content-check`;
       const IGNORE_LIST_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore-list`;
@@ -476,6 +476,7 @@
               )
             )
           );
+          console.log("Sending to AI:", uniqueTexts); 
 
           const endpoint =
             checkType === "TYPO_BRAND"
@@ -494,6 +495,7 @@
           const aiData = await response.json();
 
           let correctionsList = [];
+          let correctionCounter = 0;
           aiData.results.forEach((result, index) => {
             if (!result.is_correct && result.corrections) {
               const originalSentence = uniqueTexts[index];
@@ -505,19 +507,16 @@
                 )
                 .map((d) => d.id);
 
-              result.corrections.forEach((correction) => {
-                const originalWord = correction.original || originalSentence;
-                if (ignoreList.includes(originalWord.toLowerCase())) return;
-
-                correctionsList.push({
-                  id: `${originalSentence}-${originalWord}-${correction.suggestion}`,
-                  originalSentence: originalSentence,
-                  originalWord: originalWord,
-                  suggestion: correction.suggestion,
-                  type: correction.type,
-                  nodes: nodeIds,
+                                result.corrections.forEach(correction => {
+                    correctionsList.push({
+                        id: `corr-${correctionCounter++}`,
+                        originalSentence: originalSentence,
+                        originalWord: correction.original,
+                        suggestion: correction.suggestion,
+                        type: correction.type,
+                        nodes: nodeIds
+                    });
                 });
-              });
             }
           });
 
@@ -582,7 +581,7 @@
                                       ? `
                                   <div class="navigation-controls">
                                       <button class="nav-btn" data-action="prev" data-word="${originalWord}" title="Previous instance">‹</button>
-                                      <span class="navigation-info" id="nav-${originalWord}">1/${instanceCount}</span>
+                                      <span class="navigation-info" id="nav-${id}">1/${instanceCount}</span>
                                       <button class="nav-btn" data-action="next" data-word="${originalWord}" title="Next instance">›</button>
                                   </div>
                                   `
@@ -643,10 +642,10 @@ window.onmessage = async (event) => {
     ).innerHTML = `<strong style="color:red;">Please select one or more frames to check.</strong>`;
     showHomePage();
   } else if (type === "navigation-update") {
-    const { word, currentIndex, totalInstances } = payload;
-    const navElement = document.getElementById(`nav-${word}`);
+    const { word, currentIndex, totalInstances, correctionId } = payload;
+    const navElement = document.getElementById(`nav-${correctionId}`);
     if (navElement && totalInstances > 1) {
-      navElement.textContent = `${currentIndex}/${totalInstances}`;
+      navElement.textContent = `${currentIndex + 1}/${totalInstances}`;
     }
   } else if (type === "re-check-document") {
     if (!isLoading && lastCheckType) {
