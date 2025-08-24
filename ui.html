@@ -217,25 +217,6 @@
       .suggestion-btn:hover {
         background-color: #e9ecef;
       }
-      #spellCheckButton {
-        background-color: #2c9acf;
-        color: white;
-        border: none;
-        padding: 12px 0px;
-        border-radius: 8px;
-        font-weight: 500;
-        cursor: pointer;
-        width: 100%;
-        transition: background-color 0.2s ease;
-        margin-bottom: 16px;
-      }
-      #spellCheckButton:hover {
-        background-color: #2588b8;
-      }
-      #spellCheckButton:disabled {
-        background-color: #94a3b8;
-        cursor: not-allowed;
-      }
       .loading {
         display: inline-flex;
         align-items: center;
@@ -309,7 +290,7 @@
       .check-button.secondary {
       background-color: white;
       color: #0B3C58;
-      border: 2px solid #0B3C58;
+      border: 1px solid #0B3C58;
       }
       .check-button.secondary:hover {
         background-color: #f5f5f5;
@@ -322,28 +303,31 @@
         cursor: not-allowed;
       }
 
-      .back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: "New Rubrik", sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: #0B3C58;
-  cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  user-select: none;
-}
+
 
 .back-button:hover {
   background: rgba(11, 60, 88, 0.08); /* subtle hover */
 }
 
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "New Rubrik", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0B3C58;
+  cursor: pointer;
+  padding: 10px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
 .back-icon {
-  font-size: 16px;
+  font-size: 24px;
   line-height: 1;
+  font-weight: bold;
 }
 
       @keyframes spin {
@@ -365,10 +349,10 @@
       </p>
       <div class="button-group">
         <button id="typoCheckButton" class="check-button">
-          Check Typos & Rules
+          Check Spellings
         </button>
         <button id="uxCheckButton" class="check-button secondary">
-          Improve Content
+          Check Content
         </button>
       </div>
       <div id="home-status"></div>
@@ -395,7 +379,7 @@
       let clickTimer = null;
       let ignoreList = [];
 
-      const NGROK_BASE_URL = "https://b38c9ac3c290.ngrok-free.app"; // Replace if needed
+      const NGROK_BASE_URL = "https://5f8e77e777d0.ngrok-free.app"; // Replace if needed
       const SPELL_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/spell-check`;
       const CONTENT_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/content-check`;
       const IGNORE_LIST_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore-list`;
@@ -460,165 +444,224 @@
           .catch((err) => console.error("Failed to load ignore list:", err));
       };
 
-      async function processCheckResponse(payload) {
-        const { textData, checkType, selectionId } = payload;
-        const resultsDiv = document.getElementById("results");
-        const typoCheckButton = document.getElementById("typoCheckButton");
-        const uxCheckButton = document.getElementById("uxCheckButton");
+// Function to clean text before sending to API
+function cleanTextForProcessing(text) {
+  return text
+    .trim()
+    // Remove line separator character (U+2028)
+    .replace(/\u2028/g, ' ')
+    // Remove paragraph separator character (U+2029) 
+    .replace(/\u2029/g, ' ')
+    // Replace multiple whitespace with single space
+    .replace(/\s+/g, ' ')
+    // Remove arrow indicators
+    .replace(/^→\s*/, '')
+    .trim();
+}
 
-        try {
-          showResultsPage();
+async function processCheckResponse(payload) {
+  const { textData, checkType, selectionId } = payload;
+  const resultsDiv = document.getElementById("results");
+  const typoCheckButton = document.getElementById("typoCheckButton");
+  const uxCheckButton = document.getElementById("uxCheckButton");
 
-          const uniqueTexts = Array.from(
-            new Set(
-              textData.map((d) =>
-                d.text.trim().replace(/\n/g, " ").replace(/^→\s*/, "")
-              )
-            )
-          );
-          console.log("Sending to AI:", uniqueTexts); 
+  try {
+    showResultsPage();
 
-          const endpoint =
-            checkType === "TYPO_BRAND"
-              ? SPELL_CHECK_ENDPOINT
-              : CONTENT_CHECK_ENDPOINT;
+    // Clean texts before processing
+    const cleanedTextData = textData.map(d => ({
+      ...d,
+      cleanedText: cleanTextForProcessing(d.text)
+    }));
 
-          const response = await fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ texts: uniqueTexts }),
-          });
+    const uniqueTexts = Array.from(
+      new Set(cleanedTextData.map(d => d.cleanedText))
+    ).filter(text => text.length > 0); // Remove empty strings
 
-          if (!response.ok) {
-            throw new Error(`AI server error: ${response.statusText}`);
-          }
-          const aiData = await response.json();
+    console.log("Original texts:", textData.map(d => d.text));
+    console.log("Cleaned texts:", uniqueTexts);
 
-          let correctionsList = [];
-          let correctionCounter = 0;
-          aiData.results.forEach((result, index) => {
-            if (!result.is_correct && result.corrections) {
-              const originalSentence = uniqueTexts[index];
-              const nodeIds = textData
-                .filter(
-                  (d) =>
-                    d.text.trim().replace(/\n/g, " ").replace(/^→\s*/, "") ===
-                    originalSentence
-                )
-                .map((d) => d.id);
+    const endpoint =
+      checkType === "TYPO_BRAND"
+        ? SPELL_CHECK_ENDPOINT
+        : CONTENT_CHECK_ENDPOINT;
 
-                                result.corrections.forEach(correction => {
-                    correctionsList.push({
-                        id: `corr-${correctionCounter++}`,
-                        originalSentence: originalSentence,
-                        originalWord: correction.original,
-                        suggestion: correction.suggestion,
-                        type: correction.type,
-                        nodes: nodeIds
-                    });
-                });
-            }
-          });
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texts: uniqueTexts }),
+    });
 
-          allCorrections = correctionsList;
-          parent.postMessage({ 
-            pluginMessage: { 
-                type: "save-results-to-cache", 
-                payload: { selectionId, checkType, corrections: allCorrections } 
-            } 
-        }, "*");
+    if (!response.ok) {
+      throw new Error(`AI server error: ${response.statusText}`);
+    }
+    const aiData = await response.json();
+
+    let correctionsList = [];
+    let correctionCounter = 0;
+    
+    aiData.results.forEach((result, index) => {
+      if (!result.is_correct && result.corrections && result.corrections.length > 0) {
+        const originalSentence = result.original_text || uniqueTexts[index];
         
-        renderTable(allCorrections, checkType);
-          renderTable(allCorrections, checkType);
-        } catch (error) {
-          console.error("An error occurred:", error);
-          resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the console.</strong>`;
-        } finally {
-          isLoading = false;
-          typoCheckButton.disabled = false;
-          uxCheckButton.disabled = false;
-        }
-      }
+        // Find matching nodes based on cleaned text
+        const nodeIds = cleanedTextData
+          .filter(d => d.cleanedText === originalSentence)
+          .map(d => d.id);
 
-      function renderTable(corrections, checkType) {
-        const summaryDiv = document.getElementById("summary");
-        const resultsDiv = document.getElementById("results");
-        const uniqueErrorCount = corrections.length;
+        // Filter out corrections that are just line separator issues
+        const validCorrections = result.corrections.filter(correction => {
+          // Check if the correction is just removing line separators
+          const cleanOriginal = correction.original.replace(/\u2028/g, ' ').replace(/\u2029/g, ' ').replace(/\s+/g, ' ').trim();
+          const cleanSuggestion = correction.suggestion.replace(/\s+/g, ' ').trim();
+          
+          // If after cleaning they're the same, it's just a line separator issue
+          return cleanOriginal !== cleanSuggestion;
+        });
 
-        if (uniqueErrorCount > 0) {
-          summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} suggestions.</strong>`;
-          const suggestionColumnTitle =
-            checkType === "TYPO_BRAND"
-              ? "Typos & Brand Rules"
-              : "Grammar & UX Writing";
-          let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>${suggestionColumnTitle}</th></tr></thead><tbody>`;
-
-          corrections.forEach((correction, index) => {
-            const { id, originalSentence, originalWord, suggestion, nodes } =
-              correction;
-            const instanceCount = nodes.length;
-
-            const sentenceHTML = originalSentence.replace(
-              new RegExp(
-                `\\b${originalWord.replace(
-                  /([.*+?^=!:${}()|\[\]\/\\])/g,
-                  "\\$1"
-                )}\\b`,
-                "gi"
-              ),
-              `<strong class="highlight">${originalWord}</strong>`
-            );
-
-            tableHTML += `<tr id="row-${id}">
-                              <td>${index + 1}</td>
-                              <td class="original-text-cell" 
-                                  data-word="${originalWord}"
-                                  data-instance-count="${instanceCount}"
-                                  data-node-ids='${JSON.stringify(nodes)}'>
-                                  <div>${sentenceHTML}</div>
-                                  ${
-                                    instanceCount > 1
-                                      ? `
-                                  <div class="navigation-controls">
-                                      <button class="nav-btn" data-action="prev" data-word="${originalWord}" title="Previous instance">‹</button>
-                                      <span class="navigation-info" id="nav-${id}">1/${instanceCount}</span>
-                                      <button class="nav-btn" data-action="next" data-word="${originalWord}" title="Next instance">›</button>
-                                  </div>
-                                  `
-                                      : ""
-                                  }
-                              </td>
-                              <td>
-                                <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${originalWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
-              nodes
-            )}'>${suggestion}</button>
-                                ${
-                                  checkType === "TYPO_BRAND"
-                                    ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}" title="Ignore this word">Ignore</button>`
-                                    : ""
-                                }
-                              </td>
-                            </tr>`;
+        // Only add corrections that are actual content issues, not formatting
+        validCorrections.forEach(correction => {
+          correctionsList.push({
+            id: `corr-${correctionCounter++}`,
+            originalSentence: originalSentence,
+            originalWord: correction.original,
+            suggestion: correction.suggestion,
+            type: correction.type,
+            nodes: nodeIds
           });
+        });
+      }
+    });
 
-          tableHTML += `</tbody></table>`;
-          resultsDiv.innerHTML = tableHTML;
-                    parent.postMessage(
-            {
-              pluginMessage: {
-                type: "resize-window",
-                width: 800,
-                height: Math.min(900, 350 + uniqueErrorCount * 65),
-              },
-            },
-            "*"
-          );
-        } else {
-          summaryDiv.innerHTML = "";
-          resultsDiv.innerHTML = "No issues found! ✓";
-        }
+    allCorrections = correctionsList;
+    parent.postMessage({ 
+      pluginMessage: { 
+          type: "save-results-to-cache", 
+          payload: { selectionId, checkType, corrections: allCorrections } 
+      } 
+    }, "*");
+    
+    renderTable(allCorrections, checkType);
+  } catch (error) {
+    console.error("An error occurred:", error);
+    resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the console.</strong>`;
+  } finally {
+    isLoading = false;
+    typoCheckButton.disabled = false;
+    uxCheckButton.disabled = false;
+  }
+}
+
+// Alternative: If you want to handle this on the backend/API side
+function preprocessTextsForAPI(texts) {
+  return texts.map(text => ({
+    original: text,
+    cleaned: cleanTextForProcessing(text)
+  })).filter(item => item.cleaned.length > 0);
+}
+
+// Updated render function to handle display properly
+function renderTable(corrections, checkType) {
+  const summaryDiv = document.getElementById("summary");
+  const resultsDiv = document.getElementById("results");
+  const uniqueErrorCount = corrections.length;
+
+  if (uniqueErrorCount > 0) {
+    summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} suggestions.</strong>`;
+    const suggestionColumnTitle =
+      checkType === "TYPO_BRAND"
+        ? "Typos & Brand Rules"
+        : "Grammar & UX Writing";
+    let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>${suggestionColumnTitle}</th></tr></thead><tbody>`;
+
+    corrections.forEach((correction, index) => {
+      const { id, originalSentence, originalWord, suggestion, nodes } = correction;
+      const instanceCount = nodes.length;
+
+      // Clean the original word for display (remove line separators)
+      const displayOriginalWord = originalWord.replace(/\u2028/g, '').replace(/\u2029/g, '');
+      const displaySentence = originalSentence.replace(/\u2028/g, ' ').replace(/\u2029/g, ' ').replace(/\s+/g, ' ');
+
+      // Highlight the specific word/phrase being corrected
+      let sentenceHTML = displaySentence;
+      
+      if (displayOriginalWord && displayOriginalWord.trim() !== '') {
+        const escapedOriginalWord = displayOriginalWord.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+        const isWholeWord = /^\w+$/.test(displayOriginalWord);
+        const regex = isWholeWord 
+          ? new RegExp(`\\b${escapedOriginalWord}\\b`, "gi")
+          : new RegExp(escapedOriginalWord, "gi");
+        
+        sentenceHTML = displaySentence.replace(
+          regex,
+          `<strong class="highlight">${displayOriginalWord}</strong>`
+        );
       }
 
+      const dataWord = checkType === 'UX_WRITING' ? displayOriginalWord : displayOriginalWord;
+
+      tableHTML += `<tr id="row-${id}">
+                        <td>${index + 1}</td>
+                        <td class="original-text-cell" 
+                            data-word="${dataWord}"
+                            data-instance-count="${instanceCount}"
+                            data-node-ids='${JSON.stringify(nodes)}'>
+                            <div>${sentenceHTML}</div>
+                            ${
+                              instanceCount > 1
+                                ? `
+                            <div class="navigation-controls">
+                                <button class="nav-btn" data-action="prev" data-word="${dataWord}" title="Previous instance">‹</button>
+                                <span class="navigation-info" id="nav-${id}">1/${instanceCount}</span>
+                                <button class="nav-btn" data-action="next" data-word="${dataWord}" title="Next instance">›</button>
+                            </div>
+                            `
+                                : ""
+                            }
+                        </td>
+                        <td>
+                          <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${dataWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(nodes)}'>${suggestion}</button>
+                          ${
+                            checkType === "TYPO_BRAND"
+                              ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${displayOriginalWord}" title="Ignore this word">Ignore</button>`
+                              : ""
+                          }
+                        </td>
+                      </tr>`;
+    });
+
+    tableHTML += `</tbody></table>`;
+    resultsDiv.innerHTML = tableHTML;
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: "resize-window",
+          width: 800,
+          height: Math.min(900, 350 + uniqueErrorCount * 65),
+        },
+      },
+      "*"
+    );
+  } else {
+    summaryDiv.innerHTML = "";
+    resultsDiv.innerHTML = "No issues found! ✓";
+  }
+}
+
+
+function isLineSeparatorOnlyCorrection(original, suggestion) {
+  const cleanOriginal = original
+    .replace(/\u2028/g, ' ')
+    .replace(/\u2029/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  const cleanSuggestion = suggestion
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  return cleanOriginal === cleanSuggestion;
+}
 window.onmessage = async (event) => {
   const { type, payload } = event.data.pluginMessage;
 
@@ -669,11 +712,12 @@ function updateProgressMessage(message) {
       function handleNavigationClick(targetCell) {
         const word = targetCell.dataset.word;
         const nodeIds = JSON.parse(targetCell.dataset.nodeIds);
+        const correctionId = targetCell.closest('tr').id.replace('row-', '');
         parent.postMessage(
           {
             pluginMessage: {
               type: "navigate-to-word",
-              payload: { word, nodeIds },
+              payload: { word, nodeIds, correctionId },
             },
           },
           "*"
@@ -681,11 +725,13 @@ function updateProgressMessage(message) {
       }
 
       function handlePrevNext(action, word) {
+          const cell = document.querySelector(`.original-text-cell[data-word="${word}"]`);
+  const correctionId = cell.closest('tr').id.replace('row-', '');
         parent.postMessage(
           {
             pluginMessage: {
               type: action === "prev" ? "navigate-prev" : "navigate-next",
-              payload: { word },
+              payload: { word, correctionId },
             },
           },
           "*"

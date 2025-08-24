@@ -19,6 +19,7 @@ interface ReplaceWordPayload {
 interface NavigateToWordPayload {
   word: string;
   nodeIds?: string[];
+  correctionId?: string; 
 }
 
 const CACHE_KEY = 'spellCheckResultCache';
@@ -119,7 +120,7 @@ async function handleSaveResultsToCache(payload: { selectionId: string; checkTyp
 }
 // Smart navigation to word instances with cycling
 async function handleNavigateToWord(payload: NavigateToWordPayload): Promise<void> {
-  const { word, nodeIds } = payload;
+  const { word, nodeIds, correctionId } = payload;
   
   // If nodeIds provided, initialize navigation state
   if (nodeIds && nodeIds.length > 0) {
@@ -130,12 +131,12 @@ async function handleNavigateToWord(payload: NavigateToWordPayload): Promise<voi
   const navState = navigationState[word];
   if (!navState || !navState.nodeIds || navState.nodeIds.length === 0) return;
 
-  await navigateToCurrentInstance(word, navState);
+  await navigateToCurrentInstance(word, navState, correctionId);
 }
 
 // Navigate to previous instance
 async function handleNavigatePrev(payload: NavigateToWordPayload): Promise<void> {
-  const { word } = payload;
+  const { word,  correctionId} = payload;
   const navState = navigationState[word];
   
   if (!navState || !navState.nodeIds || navState.nodeIds.length === 0) return;
@@ -145,12 +146,12 @@ async function handleNavigatePrev(payload: NavigateToWordPayload): Promise<void>
     ? navState.nodeIds.length - 1 
     : navState.currentIndex - 1;
 
-  await navigateToCurrentInstance(word, navState);
+  await navigateToCurrentInstance(word, navState, correctionId);
 }
 
 // Navigate to next instance
 async function handleNavigateNext(payload: NavigateToWordPayload): Promise<void> {
-  const { word } = payload;
+  const { word, correctionId } = payload;
   const navState = navigationState[word];
   
   if (!navState || !navState.nodeIds || navState.nodeIds.length === 0) return;
@@ -158,11 +159,11 @@ async function handleNavigateNext(payload: NavigateToWordPayload): Promise<void>
   // Move to next instance 
   navState.currentIndex = (navState.currentIndex + 1) % navState.nodeIds.length;
 
-  await navigateToCurrentInstance(word, navState);
+  await navigateToCurrentInstance(word, navState, correctionId);
 }
 
 // Core navigation function 
-async function navigateToCurrentInstance(word: string, navState: { nodeIds: string[], currentIndex: number }): Promise<void> {
+async function navigateToCurrentInstance(word: string, navState: { nodeIds: string[], currentIndex: number }, correctionId?: string): Promise<void> {
   const currentNodeId = navState.nodeIds[navState.currentIndex];
 
   try {
@@ -173,13 +174,14 @@ async function navigateToCurrentInstance(word: string, navState: { nodeIds: stri
         figma.currentPage.selection = [node as SceneNode];
         figma.viewport.scrollAndZoomIntoView([node as SceneNode]);
         
-        // Update UI with current position (immediate)
+      
         figma.ui.postMessage({ 
           type: "navigation-update", 
           payload: { 
             word, 
-            currentIndex: navState.currentIndex + 1, 
-            totalInstances: navState.nodeIds.length 
+            currentIndex: navState.currentIndex,  
+            totalInstances: navState.nodeIds.length,
+            correctionId: correctionId || '' 
           }
         });
 
@@ -194,7 +196,6 @@ async function navigateToCurrentInstance(word: string, navState: { nodeIds: stri
     }
   } catch (error) {
     console.error(`Error navigating to node ${currentNodeId}:`, error);
-    // Use immediate notification for errors
     figma.notify(`Could not navigate to "${word}". Node may have been deleted.`);
   }
 }
