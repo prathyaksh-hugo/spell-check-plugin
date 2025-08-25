@@ -26,6 +26,18 @@ interface NavigateToWordPayload {
 
 const CACHE_KEY = "spellCheckResultCache";
 
+async function handleClearCache(): Promise<void> {
+  try {
+    // Clear the cache by setting its value to an empty object
+    await figma.clientStorage.setAsync(CACHE_KEY, {});
+    figma.notify('✅ Cache cleared successfully!');
+    console.log('Client storage cache cleared.');
+  } catch (error) {
+    console.error("Failed to clear cache:", error);
+    figma.notify('❌ Failed to clear cache. See console for details.');
+  }
+}
+
 // // Debounced notification function
 function showDebouncedNotification(message: string, delay: number = 500): void {
   // Cancel any existing notification timeout
@@ -356,6 +368,7 @@ async function main(): Promise<void> {
         allKeys: keys // Include for debugging
       }
     });
+    await handleClearCache();
     
   } catch (error) {
     console.error('Error clearing cache:', error);
@@ -368,7 +381,6 @@ async function main(): Promise<void> {
     });
   }
   break;
-      break;
       case "run-check":
         await handleRunCheck(msg.payload.checkType);
         break;

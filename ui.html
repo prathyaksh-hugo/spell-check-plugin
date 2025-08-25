@@ -6,19 +6,36 @@
         font-family: "New Rubrik", -apple-system, BlinkMacSystemFont, "Segoe UI",
           Roboto, Helvetica, Arial, sans-serif;
         margin: 0;
-        padding: 20px;
+        padding: 0px;
         background: linear-gradient(to bottom, #acdadb, #f0f0e0);
         min-height: 100vh;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
-        position: relative
+        position: relative;
       }
       html,
       body {
-        overscroll-behavior-x: none; /* Prevents back/forward swipe */
-        overflow-x: hidden; /* No horizontal scroll */
+        overscroll-behavior-x: none;
+        overflow-x: hidden;
+        overflow: hidden;
+      }
+      #homePage {
+        overflow: hidden;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100%;
+      }
+      #resultsPage {
+        overflow-y: auto;
+        overflow-x: hidden;
+        height: calc(100% - 20px);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100%;
       }
 
       h1 {
@@ -27,8 +44,9 @@
         margin-bottom: 20px;
         color: #0b3c58;
         text-align: center;
-         line-height: 1.2;  
-      }     .heading-row {
+        line-height: 1.2;
+      }
+      .heading-row {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
@@ -48,67 +66,77 @@
         padding: 0 8px;
       }
       /* Clear Cache Icon Styles */
-.clear-cache-icon {
-  position: absolute;
-  bottom: 16px;
-  left: 186px;
-  width: 24px;
-  height: 24px;
-  background-color: rgba(11, 60, 88, 0.8);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  transition: all 0.2s ease;
-  border: none;
-  z-index: 1000;
-}
+      .clear-cache-icon {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        background-color: rgba(11, 60, 88, 0.9);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.2s ease;
+        border: none;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
       .clear-cache-icon:hover {
         background-color: #0b3c58;
         transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       }
 
-      /* Tooltip Styles */
-      .tooltip {
-        position: relative;
+      /* Adjust tooltip positioning for bottom placement */
+      .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 70px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 6px;
+        position: absolute;
+        z-index: 1001;
+        bottom: 100%; /* Position above the icon */
+        right: 0;
+        margin-bottom: 8px; /* Space between icon and tooltip */
+        font-size: 11px;
+        opacity: 0;
+        transition: opacity 0.3s;
       }
-.tooltip .tooltiptext {
-  visibility: hidden;
-  width: 50px;
-  background-color: #333;
-  color: #fff;
-  text-align: center;
-  border-radius: 6px;
-  padding: 6px;
-  position: absolute;
-  z-index: 1001;
-  top: 150%;
-  right: 0;
-  margin-right: -20px;
-  font-size: 8px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.tooltip .tooltiptext::after {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  right: 50%;
-  margin-right: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: transparent transparent #333 transparent;
-}
+
+      .tooltip .tooltiptext::after {
+        content: "";
+        position: absolute;
+        top: 100%; /* Position below the tooltip */
+        right: 50%;
+        margin-right: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent; /* Arrow pointing down */
+      }
+
+      /* Adjust for smaller screens */
+      @media (max-width: 600px) {
+        .clear-cache-icon {
+          bottom: 15px;
+          right: 15px;
+          width: 36px;
+          height: 36px;
+          font-size: 16px;
+        }
+      }
       .tooltip:hover .tooltiptext {
         visibility: visible;
         opacity: 1;
       }
-
-      /* Success Message Styles */
       .success-message {
         position: fixed;
         top: 50%;
@@ -345,12 +373,14 @@
         position: absolute;
         top: 0;
         left: 0;
+        padding: 20px;
         width: 100%;
-        height: 100%;
+        height: auto;
         padding: 16px;
         box-sizing: border-box;
         background: linear-gradient(135deg, #d0eaea 0%, #f6f6ec 100%);
         transition: transform 0.3s ease-in-out;
+        overflow: hidden;
       }
       .page.hidden {
         transform: translateX(100%);
@@ -366,11 +396,11 @@
         margin-bottom: 16px;
       }
       .controls-container {
-  display: flex;
-  align-items: center;
-  gap: 8px; /* Adds a small space between the nav controls and the ignore button */
-  margin-top: 4px;
-}
+        display: flex;
+        align-items: center;
+        gap: 8px; /* Adds a small space between the nav controls and the ignore button */
+        margin-top: 4px;
+      }
       .button-group {
         font-family: "New Rubrik", sans-serif !important;
         display: flex;
@@ -443,9 +473,9 @@
   <body>
     <!-- Page 1: Home Screen -->
     <div id="homePage" class="page active">
-  <div class="heading-row">
-    <h1>AI Spell Check & Content Correction</h1>
-  </div>
+      <div class="heading-row">
+        <h1>AI Spell Check & Content Correction</h1>
+      </div>
       <p class="plugin-description">
         Select one or more frames, then choose a check to run.
       </p>
@@ -472,6 +502,15 @@
       <div id="results"></div>
     </div>
 
+    <div
+      id="clearCacheContainer"
+      class="tooltip clear-cache-icon"
+      onclick="clearCache()"
+    >
+      ⟳
+      <span class="tooltiptext">Clear Cache</span>
+    </div>
+
     <script>
       let isLoading = false;
       let allCorrections = [];
@@ -494,6 +533,7 @@
         homePage.classList.add("hidden");
         resultsPage.classList.remove("hidden");
         resultsPage.classList.add("active");
+        document.getElementById("clearCacheContainer").style.display = "none";
       }
 
       function showHomePage() {
@@ -501,6 +541,7 @@
         resultsPage.classList.add("hidden");
         homePage.classList.remove("hidden");
         homePage.classList.add("active");
+        document.getElementById("clearCacheContainer").style.display = "flex";
       }
 
       // Show success message function
@@ -621,7 +662,7 @@
             throw new Error(`AI server error: ${response.statusText}`);
           }
           const aiData = await response.json();
-          console.log("Received from API:", JSON.stringify(aiData, null, 2))
+          console.log("Received from API:", JSON.stringify(aiData, null, 2));
 
           let correctionsList = [];
           let correctionCounter = 0;
@@ -641,16 +682,15 @@
                 .map((d) => d.id);
 
               result.corrections.forEach((correction) => {
-                  correctionsList.push({
-                    id: `corr-${correctionCounter++}`,
-                    originalSentence: originalSentence,
-                    originalWord: correction.original,
-                    suggestion: correction.suggestion,
-                    type: correction.type,
-                    nodes: nodeIds,
-                  });
+                correctionsList.push({
+                  id: `corr-${correctionCounter++}`,
+                  originalSentence: originalSentence,
+                  originalWord: correction.original,
+                  suggestion: correction.suggestion,
+                  type: correction.type,
+                  nodes: nodeIds,
+                });
               });
-
             }
           });
 
@@ -704,8 +744,14 @@
           let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>${suggestionColumnTitle}</th></tr></thead><tbody>`;
 
           corrections.forEach((correction, index) => {
-            const { id, originalSentence, originalWord, suggestion, nodes, type } =
-              correction;
+            const {
+              id,
+              originalSentence,
+              originalWord,
+              suggestion,
+              nodes,
+              type,
+            } = correction;
             const instanceCount = nodes.length;
 
             // Clean the original word for display (remove line separators)
@@ -720,7 +766,11 @@
             // Highlight the specific word/phrase being corrected
             let sentenceHTML = displaySentence;
 
-            if (checkType === "TYPO_BRAND" && displayOriginalWord && displayOriginalWord.trim() !== "") {
+            if (
+              checkType === "TYPO_BRAND" &&
+              displayOriginalWord &&
+              displayOriginalWord.trim() !== ""
+            ) {
               const escapedOriginalWord = displayOriginalWord.replace(
                 /([.*+?^=!:${}()|\[\]\/\\])/g,
                 "\\$1"
@@ -750,14 +800,22 @@
     data-node-ids='${JSON.stringify(nodes)}'>
     <div>${sentenceHTML}</div>
     <div class="controls-container">  
-        ${ instanceCount > 1 && type === 'TYPO_BRAND' ? `
+        ${
+          instanceCount > 1 && type === "TYPO_BRAND"
+            ? `
         <div class="navigation-controls">
             <button class="nav-btn" data-action="prev" data-word="${originalWord}">‹</button>
             <span class="navigation-info" id="nav-${id}">1/${instanceCount}</span>
             <button class="nav-btn" data-action="next" data-word="${originalWord}">›</button>
         </div>
-        ` : "" }
-        ${ checkType === 'TYPO_BRAND' ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}">Ignore</button>` : "" }
+        `
+            : ""
+        }
+        ${
+          checkType === "TYPO_BRAND"
+            ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}">Ignore</button>`
+            : ""
+        }
     </div>
 </td>
                         <td>
@@ -839,7 +897,7 @@
             }
           }
         } else if (type === "cache-cleared") {
-          console.log("Cache cleared response:", payload); 
+          console.log("Cache cleared response:", payload);
           showSuccessMessage();
         } else if (type === "cache-error") {
           console.error("Cache clearing failed:", payload.error);
@@ -1013,12 +1071,5 @@
         }
       });
     </script>
-    <div id="successMessage" class="success-message">
-      Cache cleared successfully!
-    </div>
-           <div class="tooltip clear-cache-icon" onclick="clearCache()">
-      ⟳
-      <span class="tooltiptext">Clear Cache</span>
-    </div>
   </body>
 </html>
