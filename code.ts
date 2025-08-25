@@ -1,6 +1,8 @@
 const HIGHLIGHT_GROUP_NAME = "SPELL CHECK HIGHLIGHTS";
 let isPluginMakingChange = false;
-let navigationState: { [word: string]: { nodeIds: string[], currentIndex: number } } = {};
+let navigationState: {
+  [word: string]: { nodeIds: string[]; currentIndex: number };
+} = {};
 
 // Add notification debouncing
 let notificationTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -19,10 +21,10 @@ interface ReplaceWordPayload {
 interface NavigateToWordPayload {
   word: string;
   nodeIds?: string[];
-  correctionId?: string; 
+  correctionId?: string;
 }
 
-const CACHE_KEY = 'spellCheckResultCache';
+const CACHE_KEY = "spellCheckResultCache";
 
 // // Debounced notification function
 function showDebouncedNotification(message: string, delay: number = 500): void {
@@ -30,7 +32,7 @@ function showDebouncedNotification(message: string, delay: number = 500): void {
   if (notificationTimeout) {
     clearTimeout(notificationTimeout);
   }
-  
+
   // Set new timeout for notification
   notificationTimeout = setTimeout(() => {
     figma.notify(message);
@@ -50,83 +52,109 @@ function clearNavigationState(): void {
 
 // In src/code.ts
 
-async function collectTextNodesData(): Promise<{ selectionId: string; textData: TextNodeData[] }> {
+async function collectTextNodesData(): Promise<{
+  selectionId: string;
+  textData: TextNodeData[];
+}> {
   const selection = figma.currentPage.selection;
   if (selection.length === 0) {
     figma.ui.postMessage({ type: "no-selection" });
-    return { selectionId: '', textData: [] };
+    return { selectionId: "", textData: [] };
   }
 
   // Create a unique "fingerprint" for the current selection.
-  const selectionId = selection.map(node => node.id).sort().join(',');
+  const selectionId = selection
+    .map((node) => node.id)
+    .sort()
+    .join(",");
 
   let textNodes: readonly TextNode[] = [];
-  selection.forEach(node => {
-    if (node.type === "FRAME" || node.type === "GROUP" || node.type === "SECTION" || node.type === "COMPONENT" || node.type === "INSTANCE") {
-      textNodes = textNodes.concat(node.findAllWithCriteria({ types: ["TEXT"] }));
+  selection.forEach((node) => {
+    if (
+      node.type === "FRAME" ||
+      node.type === "GROUP" ||
+      node.type === "SECTION" ||
+      node.type === "COMPONENT" ||
+      node.type === "INSTANCE"
+    ) {
+      textNodes = textNodes.concat(
+        node.findAllWithCriteria({ types: ["TEXT"] })
+      );
     } else if (node.type === "TEXT") {
       textNodes = textNodes.concat([node]);
     }
   });
 
   if (textNodes.length === 0) {
-      figma.notify("No text layers found in your selection.");
-      return { selectionId, textData: [] };
+    figma.notify("No text layers found in your selection.");
+    return { selectionId, textData: [] };
   }
 
   const textData = textNodes.map((node) => ({
     id: node.id,
     text: node.characters,
   }));
-  
+
   return { selectionId, textData };
 }
 
-async function handleRunCheck(checkType: 'TYPO_BRAND' | 'UX_WRITING'): Promise<void> {
+async function handleRunCheck(
+  checkType: "TYPO_BRAND" | "UX_WRITING"
+): Promise<void> {
   navigationState = {};
 
-   figma.ui.postMessage({ type: "extraction-started", payload: { checkType } });
+  figma.ui.postMessage({ type: "extraction-started", payload: { checkType } });
   const { selectionId, textData } = await collectTextNodesData();
-
-  
 
   if (textData.length > 0) {
     // Check clientStorage for cached results
-    const cache = await figma.clientStorage.getAsync(CACHE_KEY) || {};
+    const cache = (await figma.clientStorage.getAsync(CACHE_KEY)) || {};
     const cacheId = `${selectionId}-${checkType}`;
-    
+
     if (cache[cacheId]) {
       console.log("Cache HIT. Sending stored results to UI.");
       // If we find results, send them directly to the UI
-      figma.ui.postMessage({ type: "cached-results-found", payload: { corrections: cache[cacheId], checkType } });
+      figma.ui.postMessage({
+        type: "cached-results-found",
+        payload: { corrections: cache[cacheId], checkType },
+      });
     } else {
       console.log("Cache MISS. Proceeding with API check.");
       // If no results, tell the UI to make the API call
-      figma.ui.postMessage({ type: "text-to-check", payload: { selectionId, textData, checkType } });
+      figma.ui.postMessage({
+        type: "text-to-check",
+        payload: { selectionId, textData, checkType },
+      });
     }
   }
 }
 
 // Function to save new results to the cache
-async function handleSaveResultsToCache(payload: { selectionId: string; checkType: string; corrections: any[] }): Promise<void> {
-    const { selectionId, checkType, corrections } = payload;
-    const cache = await figma.clientStorage.getAsync(CACHE_KEY) || {};
-    const cacheId = `${selectionId}-${checkType}`;
-    
-    cache[cacheId] = corrections;
-    
-    await figma.clientStorage.setAsync(CACHE_KEY, cache);
-    console.log(`Saved results for ${cacheId} to client storage.`);
+async function handleSaveResultsToCache(payload: {
+  selectionId: string;
+  checkType: string;
+  corrections: any[];
+}): Promise<void> {
+  const { selectionId, checkType, corrections } = payload;
+  const cache = (await figma.clientStorage.getAsync(CACHE_KEY)) || {};
+  const cacheId = `${selectionId}-${checkType}`;
+
+  cache[cacheId] = corrections;
+
+  await figma.clientStorage.setAsync(CACHE_KEY, cache);
+  console.log(`Saved results for ${cacheId} to client storage.`);
 }
 // Smart navigation to word instances with cycling
-async function handleNavigateToWord(payload: NavigateToWordPayload): Promise<void> {
+async function handleNavigateToWord(
+  payload: NavigateToWordPayload
+): Promise<void> {
   const { word, nodeIds, correctionId } = payload;
-  
+
   // If nodeIds provided, initialize navigation state
   if (nodeIds && nodeIds.length > 0) {
     navigationState[word] = { nodeIds, currentIndex: 0 };
   }
-  
+
   // Get current navigation state
   const navState = navigationState[word];
   if (!navState || !navState.nodeIds || navState.nodeIds.length === 0) return;
@@ -135,72 +163,90 @@ async function handleNavigateToWord(payload: NavigateToWordPayload): Promise<voi
 }
 
 // Navigate to previous instance
-async function handleNavigatePrev(payload: NavigateToWordPayload): Promise<void> {
-  const { word,  correctionId} = payload;
+async function handleNavigatePrev(
+  payload: NavigateToWordPayload
+): Promise<void> {
+  const { word, correctionId } = payload;
   const navState = navigationState[word];
-  
+
   if (!navState || !navState.nodeIds || navState.nodeIds.length === 0) return;
 
   // Move to previous instance (wrap around)
-  navState.currentIndex = navState.currentIndex <= 0 
-    ? navState.nodeIds.length - 1 
-    : navState.currentIndex - 1;
+  navState.currentIndex =
+    navState.currentIndex <= 0
+      ? navState.nodeIds.length - 1
+      : navState.currentIndex - 1;
 
   await navigateToCurrentInstance(word, navState, correctionId);
 }
 
 // Navigate to next instance
-async function handleNavigateNext(payload: NavigateToWordPayload): Promise<void> {
+async function handleNavigateNext(
+  payload: NavigateToWordPayload
+): Promise<void> {
   const { word, correctionId } = payload;
   const navState = navigationState[word];
-  
+
   if (!navState || !navState.nodeIds || navState.nodeIds.length === 0) return;
 
-  // Move to next instance 
+  // Move to next instance
   navState.currentIndex = (navState.currentIndex + 1) % navState.nodeIds.length;
 
   await navigateToCurrentInstance(word, navState, correctionId);
 }
 
-// Core navigation function 
-async function navigateToCurrentInstance(word: string, navState: { nodeIds: string[], currentIndex: number }, correctionId?: string): Promise<void> {
+// Core navigation function
+async function navigateToCurrentInstance(
+  word: string,
+  navState: { nodeIds: string[]; currentIndex: number },
+  correctionId?: string
+): Promise<void> {
   const currentNodeId = navState.nodeIds[navState.currentIndex];
 
   try {
     const node = await figma.getNodeByIdAsync(currentNodeId);
-    if (node && !node.removed && "absoluteBoundingBox" in node && node.absoluteBoundingBox) {
+    if (
+      node &&
+      !node.removed &&
+      "absoluteBoundingBox" in node &&
+      node.absoluteBoundingBox
+    ) {
       // Select and navigate to the current instance
       if (node.parent) {
         figma.currentPage.selection = [node as SceneNode];
         figma.viewport.scrollAndZoomIntoView([node as SceneNode]);
-        
-      
-        figma.ui.postMessage({ 
-          type: "navigation-update", 
-          payload: { 
-            word, 
-            currentIndex: navState.currentIndex,  
+
+        figma.ui.postMessage({
+          type: "navigation-update",
+          payload: {
+            word,
+            currentIndex: navState.currentIndex,
             totalInstances: navState.nodeIds.length,
-            correctionId: correctionId || '' 
-          }
+            correctionId: correctionId || "",
+          },
         });
 
         // Use debounced notification to prevent lag
-        const instanceText = navState.nodeIds.length > 1 
-          ? ` (${navState.currentIndex + 1}/${navState.nodeIds.length})` 
-          : '';
-        
-        showDebouncedNotification(`" Navigated to ${word}"${instanceText}`, 300);
-      
+        const instanceText =
+          navState.nodeIds.length > 1
+            ? ` (${navState.currentIndex + 1}/${navState.nodeIds.length})`
+            : "";
+
+        showDebouncedNotification(
+          `" Navigated to ${word}"${instanceText}`,
+          300
+        );
       }
     }
   } catch (error) {
     console.error(`Error navigating to node ${currentNodeId}:`, error);
-    figma.notify(`Could not navigate to "${word}". Node may have been deleted.`);
+    figma.notify(
+      `Could not navigate to "${word}". Node may have been deleted.`
+    );
   }
 }
 
-// Handle word replacement in text nodes 
+// Handle word replacement in text nodes
 async function handleReplaceWord(payload: ReplaceWordPayload): Promise<void> {
   const { nodeIds, oldWord, newWord } = payload;
   let replacedCount = 0;
@@ -217,7 +263,10 @@ async function handleReplaceWord(payload: ReplaceWordPayload): Promise<void> {
         isPluginMakingChange = true;
 
         const beforeText = node.characters;
-        const afterText = beforeText.replace(new RegExp(`\\b${oldWord}\\b`, "gi"), newWord);
+        const afterText = beforeText.replace(
+          new RegExp(`\\b${oldWord}\\b`, "gi"),
+          newWord
+        );
         if (beforeText !== afterText) {
           node.characters = afterText;
           replacedCount++;
@@ -256,7 +305,7 @@ function setupEventListeners(): void {
       isPluginMakingChange = false;
       return;
     }
-    
+
     // Only trigger re-check for meaningful changes
     figma.ui.postMessage({ type: "re-check-document" });
   });
@@ -271,6 +320,55 @@ async function main(): Promise<void> {
 
   figma.ui.onmessage = async (msg) => {
     switch (msg.type) {
+      case 'clear-cache':
+  try {
+    const keys = await figma.clientStorage.keysAsync();
+    console.log('All storage keys:', keys); // Debug: see all keys
+    
+    // More comprehensive filtering - check if any keys exist at all
+    const cacheKeys = keys.filter(key => 
+      key.startsWith('correction-results-') || 
+      key.includes('cache') ||
+      key.includes('spell-check') ||
+      key.includes('content-check') ||
+      key.includes('results') || // Add more patterns
+      key.includes('typo') ||
+      key.includes('ux')
+    );
+    
+    console.log('Found cache keys to delete:', cacheKeys); // Debug
+    
+    // If no specific cache keys found, let's try clearing ALL keys (for testing)
+    const keysToDelete = cacheKeys.length > 0 ? cacheKeys : keys;
+    
+    for (const key of keysToDelete) {
+      await figma.clientStorage.deleteAsync(key);
+      console.log(`Deleted key: ${key}`); // Debug each deletion
+    }
+    
+    console.log(`Cleared ${keysToDelete.length} cache entries:`, keysToDelete);
+    
+    figma.ui.postMessage({ 
+      type: 'cache-cleared',
+      payload: { 
+        message: `Cleared ${keysToDelete.length} cache entries`,
+        clearedKeys: keysToDelete,
+        allKeys: keys // Include for debugging
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+    
+    figma.ui.postMessage({ 
+      type: 'cache-error',
+      payload: { 
+        error: error
+      }
+    });
+  }
+  break;
+      break;
       case "run-check":
         await handleRunCheck(msg.payload.checkType);
         break;

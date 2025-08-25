@@ -2,28 +2,42 @@
 <html>
   <head>
     <style>
-    body {
-      font-family: "New Rubrik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(to bottom, #ACDADB, #F0F0E0);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-    }
-    html, body {
-  overscroll-behavior-x: none; /* Prevents back/forward swipe */
-  overflow-x: hidden;          /* No horizontal scroll */
-}
-    h1 {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 20px;
-      color: #0B3C58;
-      text-align: center;
-    }
+      body {
+        font-family: "New Rubrik", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(to bottom, #acdadb, #f0f0e0);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+      }
+      html,
+      body {
+        overscroll-behavior-x: none; /* Prevents back/forward swipe */
+        overflow-x: hidden; /* No horizontal scroll */
+      }
+
+      h1 {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #0b3c58;
+        text-align: center;
+         line-height: 1.2;  
+      }     .heading-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .heading-row h1 {
+        margin: 0;
+        flex: 1;
+      }
       .plugin-description {
         font-size: 13px;
         color: #6c757d;
@@ -31,6 +45,86 @@
         line-height: 1.4;
         margin-bottom: 20px;
         padding: 0 8px;
+      }
+      /* Clear Cache Icon Styles */
+      .clear-cache-icon {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 32px;
+        height: 32px;
+        background-color: rgba(11, 60, 88, 0.8);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        transition: all 0.2s ease;
+        border: none;
+        z-index: 1000;
+      }
+      .clear-cache-icon:hover {
+        background-color: #0b3c58;
+        transform: scale(1.1);
+      }
+
+      /* Tooltip Styles */
+      .tooltip {
+        position: relative;
+      }
+      .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 110px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px;
+        position: absolute;
+        z-index: 1001;
+        bottom: 150%;
+        right: 0;
+        margin-right: -30px;
+        font-size: 8px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .tooltip .tooltiptext::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        right: 50%;
+        margin-right: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+      }
+      .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      /* Success Message Styles */
+      .success-message {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #28a745;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        z-index: 1002;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .success-message.show {
+        opacity: 1;
       }
       #results {
         margin-top: 8px;
@@ -246,6 +340,7 @@
         border-color: #adb5bd;
       }
       .page {
+        position: relative;
         position: absolute;
         top: 0;
         left: 0;
@@ -278,7 +373,7 @@
       }
       .check-button {
         flex: 1;
-        background-color: #0B3C58;
+        background-color: #0b3c58;
         color: white;
         border: none;
         padding: 14px 0px;
@@ -288,9 +383,9 @@
         transition: background-color 0.2s ease;
       }
       .check-button.secondary {
-      background-color: white;
-      color: #0B3C58;
-      border: 1px solid #0B3C58;
+        background-color: white;
+        color: #0b3c58;
+        border: 1px solid #0b3c58;
       }
       .check-button.secondary:hover {
         background-color: #f5f5f5;
@@ -303,32 +398,30 @@
         cursor: not-allowed;
       }
 
+      .back-button:hover {
+        background: rgba(11, 60, 88, 0.08);
+      }
 
+      .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: "New Rubrik", sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+        color: #0b3c58;
+        cursor: pointer;
+        padding: 10px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        user-select: none;
+      }
 
-.back-button:hover {
-  background: rgba(11, 60, 88, 0.08); /* subtle hover */
-}
-
-.back-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-family: "New Rubrik", sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: #0B3C58;
-  cursor: pointer;
-  padding: 10px 16px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.back-icon {
-  font-size: 24px;
-  line-height: 1;
-  font-weight: bold;
-}
+      .back-icon {
+        font-size: 24px;
+        line-height: 1;
+        font-weight: bold;
+      }
 
       @keyframes spin {
         0% {
@@ -343,7 +436,13 @@
   <body>
     <!-- Page 1: Home Screen -->
     <div id="homePage" class="page active">
-      <h1>AI Spell Check & Content Correction</h1>
+  <div class="heading-row">
+    <h1>AI Spell Check & Content Correction</h1>
+    <div class="tooltip clear-cache-icon" onclick="clearCache()">
+      ⟳
+      <span class="tooltiptext">Clear Cache</span>
+    </div>
+  </div>
       <p class="plugin-description">
         Select one or more frames, then choose a check to run.
       </p>
@@ -360,11 +459,10 @@
 
     <!-- Page 2: Results Screen -->
     <div id="resultsPage" class="page hidden">
-      <!-- <button id="backButton" class="back-button">←Back</button> -->
-       <div id="backButton" class="back-button">
-  <span class="back-icon">←</span>
-  <span class="back-text">Back</span>
-</div>
+      <div id="backButton" class="back-button">
+        <span class="back-icon">←</span>
+        <span class="back-text">Back</span>
+      </div>
 
       <h2 id="resultsTitle"></h2>
       <div id="summary"></div>
@@ -379,7 +477,7 @@
       let clickTimer = null;
       let ignoreList = [];
 
-      const NGROK_BASE_URL = "https://5f8e77e777d0.ngrok-free.app"; // Replace if needed
+      const NGROK_BASE_URL = "https://fb3ff6183e99.ngrok-free.app"; // Replace if needed
       const SPELL_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/spell-check`;
       const CONTENT_CHECK_ENDPOINT = `${NGROK_BASE_URL}/v1/content-check`;
       const IGNORE_LIST_ENDPOINT = `${NGROK_BASE_URL}/v1/ignore-list`;
@@ -400,6 +498,25 @@
         resultsPage.classList.add("hidden");
         homePage.classList.remove("hidden");
         homePage.classList.add("active");
+      }
+
+      // Show success message function
+      function showSuccessMessage() {
+        const successMessage = document.getElementById("successMessage");
+        successMessage.classList.add("show");
+        setTimeout(() => {
+          successMessage.classList.remove("show");
+        }, 2000);
+      }
+
+      // Clear cache function
+      function clearCache() {
+        parent.postMessage(
+          {
+            pluginMessage: { type: "clear-cache" },
+          },
+          "*"
+        );
       }
 
       window.onload = () => {
@@ -424,8 +541,8 @@
           ).innerHTML = `<div class="loading"><div class="spinner"></div> Checking...</div>`;
           document.getElementById("summary").innerHTML = "";
 
-                  showResultsPage();
-        updateProgressMessage("Requesting text from Figma...");
+          showResultsPage();
+          updateProgressMessage("Extracting text from Figma...");
           parent.postMessage(
             { pluginMessage: { type: "run-check", payload: { checkType } } },
             "*"
@@ -444,163 +561,184 @@
           .catch((err) => console.error("Failed to load ignore list:", err));
       };
 
-// Function to clean text before sending to API
-function cleanTextForProcessing(text) {
-  return text
-    .trim()
-    // Remove line separator character (U+2028)
-    .replace(/\u2028/g, ' ')
-    // Remove paragraph separator character (U+2029) 
-    .replace(/\u2029/g, ' ')
-    // Replace multiple whitespace with single space
-    .replace(/\s+/g, ' ')
-    // Remove arrow indicators
-    .replace(/^→\s*/, '')
-    .trim();
-}
-
-async function processCheckResponse(payload) {
-  const { textData, checkType, selectionId } = payload;
-  const resultsDiv = document.getElementById("results");
-  const typoCheckButton = document.getElementById("typoCheckButton");
-  const uxCheckButton = document.getElementById("uxCheckButton");
-
-  try {
-    showResultsPage();
-
-    // Clean texts before processing
-    const cleanedTextData = textData.map(d => ({
-      ...d,
-      cleanedText: cleanTextForProcessing(d.text)
-    }));
-
-    const uniqueTexts = Array.from(
-      new Set(cleanedTextData.map(d => d.cleanedText))
-    ).filter(text => text.length > 0); // Remove empty strings
-
-    console.log("Original texts:", textData.map(d => d.text));
-    console.log("Cleaned texts:", uniqueTexts);
-
-    const endpoint =
-      checkType === "TYPO_BRAND"
-        ? SPELL_CHECK_ENDPOINT
-        : CONTENT_CHECK_ENDPOINT;
-
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ texts: uniqueTexts }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`AI server error: ${response.statusText}`);
-    }
-    const aiData = await response.json();
-
-    let correctionsList = [];
-    let correctionCounter = 0;
-    
-    aiData.results.forEach((result, index) => {
-      if (!result.is_correct && result.corrections && result.corrections.length > 0) {
-        const originalSentence = result.original_text || uniqueTexts[index];
-        
-        // Find matching nodes based on cleaned text
-        const nodeIds = cleanedTextData
-          .filter(d => d.cleanedText === originalSentence)
-          .map(d => d.id);
-
-        // Filter out corrections that are just line separator issues
-        const validCorrections = result.corrections.filter(correction => {
-          // Check if the correction is just removing line separators
-          const cleanOriginal = correction.original.replace(/\u2028/g, ' ').replace(/\u2029/g, ' ').replace(/\s+/g, ' ').trim();
-          const cleanSuggestion = correction.suggestion.replace(/\s+/g, ' ').trim();
-          
-          // If after cleaning they're the same, it's just a line separator issue
-          return cleanOriginal !== cleanSuggestion;
-        });
-
-        // Only add corrections that are actual content issues, not formatting
-        validCorrections.forEach(correction => {
-          correctionsList.push({
-            id: `corr-${correctionCounter++}`,
-            originalSentence: originalSentence,
-            originalWord: correction.original,
-            suggestion: correction.suggestion,
-            type: correction.type,
-            nodes: nodeIds
-          });
-        });
-      }
-    });
-
-    allCorrections = correctionsList;
-    parent.postMessage({ 
-      pluginMessage: { 
-          type: "save-results-to-cache", 
-          payload: { selectionId, checkType, corrections: allCorrections } 
-      } 
-    }, "*");
-    
-    renderTable(allCorrections, checkType);
-  } catch (error) {
-    console.error("An error occurred:", error);
-    resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the console.</strong>`;
-  } finally {
-    isLoading = false;
-    typoCheckButton.disabled = false;
-    uxCheckButton.disabled = false;
-  }
-}
-
-// Alternative: If you want to handle this on the backend/API side
-function preprocessTextsForAPI(texts) {
-  return texts.map(text => ({
-    original: text,
-    cleaned: cleanTextForProcessing(text)
-  })).filter(item => item.cleaned.length > 0);
-}
-
-// Updated render function to handle display properly
-function renderTable(corrections, checkType) {
-  const summaryDiv = document.getElementById("summary");
-  const resultsDiv = document.getElementById("results");
-  const uniqueErrorCount = corrections.length;
-
-  if (uniqueErrorCount > 0) {
-    summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} suggestions.</strong>`;
-    const suggestionColumnTitle =
-      checkType === "TYPO_BRAND"
-        ? "Typos & Brand Rules"
-        : "Grammar & UX Writing";
-    let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>${suggestionColumnTitle}</th></tr></thead><tbody>`;
-
-    corrections.forEach((correction, index) => {
-      const { id, originalSentence, originalWord, suggestion, nodes } = correction;
-      const instanceCount = nodes.length;
-
-      // Clean the original word for display (remove line separators)
-      const displayOriginalWord = originalWord.replace(/\u2028/g, '').replace(/\u2029/g, '');
-      const displaySentence = originalSentence.replace(/\u2028/g, ' ').replace(/\u2029/g, ' ').replace(/\s+/g, ' ');
-
-      // Highlight the specific word/phrase being corrected
-      let sentenceHTML = displaySentence;
-      
-      if (displayOriginalWord && displayOriginalWord.trim() !== '') {
-        const escapedOriginalWord = displayOriginalWord.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
-        const isWholeWord = /^\w+$/.test(displayOriginalWord);
-        const regex = isWholeWord 
-          ? new RegExp(`\\b${escapedOriginalWord}\\b`, "gi")
-          : new RegExp(escapedOriginalWord, "gi");
-        
-        sentenceHTML = displaySentence.replace(
-          regex,
-          `<strong class="highlight">${displayOriginalWord}</strong>`
+      // Function to clean text before sending to API
+      function cleanTextForProcessing(text) {
+        return (
+          text
+            .trim()
+            // Remove line separator character (U+2028)
+            .replace(/\u2028/g, " ")
+            // Remove paragraph separator character (U+2029)
+            .replace(/\u2029/g, " ")
+            // Replace multiple whitespace with single space
+            .replace(/\s+/g, " ")
+            // Remove arrow indicators
+            .replace(/^→\s*/, "")
+            .trim()
         );
       }
 
-      const dataWord = checkType === 'UX_WRITING' ? displayOriginalWord : displayOriginalWord;
+      async function processCheckResponse(payload) {
+        const { textData, checkType, selectionId } = payload;
+        const resultsDiv = document.getElementById("results");
+        const typoCheckButton = document.getElementById("typoCheckButton");
+        const uxCheckButton = document.getElementById("uxCheckButton");
 
-      tableHTML += `<tr id="row-${id}">
+        try {
+          showResultsPage();
+
+          // Clean texts before processing
+          const cleanedTextData = textData.map((d) => ({
+            ...d,
+            cleanedText: cleanTextForProcessing(d.text),
+          }));
+
+          const uniqueTexts = Array.from(
+            new Set(cleanedTextData.map((d) => d.cleanedText))
+          ).filter((text) => text.length > 0); // Remove empty strings
+
+          console.log(
+            "Original texts:",
+            textData.map((d) => d.text)
+          );
+          console.log("Cleaned texts:", uniqueTexts);
+
+          const endpoint =
+            checkType === "TYPO_BRAND"
+              ? SPELL_CHECK_ENDPOINT
+              : CONTENT_CHECK_ENDPOINT;
+
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texts: uniqueTexts }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`AI server error: ${response.statusText}`);
+          }
+          const aiData = await response.json();
+          console.log("Received from API:", JSON.stringify(aiData, null, 2))
+
+          let correctionsList = [];
+          let correctionCounter = 0;
+
+          aiData.results.forEach((result, index) => {
+            if (
+              !result.is_correct &&
+              result.corrections &&
+              result.corrections.length > 0
+            ) {
+              const originalSentence =
+                result.original_text || uniqueTexts[index];
+
+              // Find matching nodes based on cleaned text
+              const nodeIds = cleanedTextData
+                .filter((d) => d.cleanedText === originalSentence)
+                .map((d) => d.id);
+
+              result.corrections.forEach((correction) => {
+                  correctionsList.push({
+                    id: `corr-${correctionCounter++}`,
+                    originalSentence: originalSentence,
+                    originalWord: correction.original,
+                    suggestion: correction.suggestion,
+                    type: correction.type,
+                    nodes: nodeIds,
+                  });
+              });
+
+            }
+          });
+
+          allCorrections = correctionsList;
+          parent.postMessage(
+            {
+              pluginMessage: {
+                type: "save-results-to-cache",
+                payload: {
+                  selectionId,
+                  checkType,
+                  corrections: allCorrections,
+                },
+              },
+            },
+            "*"
+          );
+
+          renderTable(allCorrections, checkType);
+        } catch (error) {
+          console.error("An error occurred:", error);
+          resultsDiv.innerHTML = `<strong style="color:red;">An error occurred. Check the console.</strong>`;
+        } finally {
+          isLoading = false;
+          typoCheckButton.disabled = false;
+          uxCheckButton.disabled = false;
+        }
+      }
+
+      function preprocessTextsForAPI(texts) {
+        return texts
+          .map((text) => ({
+            original: text,
+            cleaned: cleanTextForProcessing(text),
+          }))
+          .filter((item) => item.cleaned.length > 0);
+      }
+
+      // Updated render function to handle display properly
+      function renderTable(corrections, checkType) {
+        const summaryDiv = document.getElementById("summary");
+        const resultsDiv = document.getElementById("results");
+        const uniqueErrorCount = corrections.length;
+
+        if (uniqueErrorCount > 0) {
+          summaryDiv.innerHTML = `<strong>Found ${uniqueErrorCount} suggestions.</strong>`;
+          const suggestionColumnTitle =
+            checkType === "TYPO_BRAND"
+              ? "Typos & Brand Rules"
+              : "Grammar & UX Writing";
+          let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>${suggestionColumnTitle}</th></tr></thead><tbody>`;
+
+          corrections.forEach((correction, index) => {
+            const { id, originalSentence, originalWord, suggestion, nodes } =
+              correction;
+            const instanceCount = nodes.length;
+
+            // Clean the original word for display (remove line separators)
+            const displayOriginalWord = originalWord
+              .replace(/\u2028/g, "")
+              .replace(/\u2029/g, "");
+            const displaySentence = originalSentence
+              .replace(/\u2028/g, " ")
+              .replace(/\u2029/g, " ")
+              .replace(/\s+/g, " ");
+
+            // Highlight the specific word/phrase being corrected
+            let sentenceHTML = displaySentence;
+
+            if (checkType === "TYPO_BRAND" && displayOriginalWord && displayOriginalWord.trim() !== "") {
+              const escapedOriginalWord = displayOriginalWord.replace(
+                /([.*+?^=!:${}()|\[\]\/\\])/g,
+                "\\$1"
+              );
+              const isWholeWord = /^\w+$/.test(displayOriginalWord);
+              const regex = isWholeWord
+                ? new RegExp(`\\b${escapedOriginalWord}\\b`, "gi")
+                : new RegExp(escapedOriginalWord, "gi");
+
+              sentenceHTML = displaySentence.replace(
+                regex,
+                `<strong class="highlight">${displayOriginalWord}</strong>`
+              );
+            }
+
+            const dataWord =
+              checkType === "UX_WRITING"
+                ? displayOriginalWord
+                : displayOriginalWord;
+
+            tableHTML += `<tr id="row-${id}">
                         <td>${index + 1}</td>
                         <td class="original-text-cell" 
                             data-word="${dataWord}"
@@ -618,101 +756,108 @@ function renderTable(corrections, checkType) {
                             `
                                 : ""
                             }
-                        </td>
-                        <td>
-                          <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${dataWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(nodes)}'>${suggestion}</button>
-                          ${
+                                ${
                             checkType === "TYPO_BRAND"
                               ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${displayOriginalWord}" title="Ignore this word">Ignore</button>`
                               : ""
                           }
                         </td>
+                        <td>
+                          <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${dataWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
+              nodes
+            )}'>${suggestion}</button>
+                        </td>
                       </tr>`;
-    });
+          });
 
-    tableHTML += `</tbody></table>`;
-    resultsDiv.innerHTML = tableHTML;
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: "resize-window",
-          width: 800,
-          height: Math.min(900, 350 + uniqueErrorCount * 65),
-        },
-      },
-      "*"
-    );
-  } else {
-    summaryDiv.innerHTML = "";
-    resultsDiv.innerHTML = "No issues found! ✓";
-  }
-}
-
-
-function isLineSeparatorOnlyCorrection(original, suggestion) {
-  const cleanOriginal = original
-    .replace(/\u2028/g, ' ')
-    .replace(/\u2029/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  
-  const cleanSuggestion = suggestion
-    .replace(/\s+/g, ' ')
-    .trim();
-  
-  return cleanOriginal === cleanSuggestion;
-}
-window.onmessage = async (event) => {
-  const { type, payload } = event.data.pluginMessage;
-
-  if (type === "text-to-check") {
-    updateProgressMessage(`Found ${payload.textData.length} text layers. Analyzing with AI...`);
-    await processCheckResponse(payload);
-  } else if (type === "cached-results-found") {
-    console.log("Displaying cached results.");
-    allCorrections = payload.corrections;
-    renderTable(allCorrections, payload.checkType);
-    isLoading = false;
-    document.getElementById("typoCheckButton").disabled = false;
-    document.getElementById("uxCheckButton").disabled = false;
-    showResultsPage();
-  } else if (type === "no-selection") {
-    isLoading = false;
-    document.getElementById("typoCheckButton").disabled = false;
-    document.getElementById("uxCheckButton").disabled = false;
-    document.getElementById(
-      "home-status"
-    ).innerHTML = `<strong style="color:red;">Please select one or more frames to check.</strong>`;
-    showHomePage();
-  } else if (type === "navigation-update") {
-    const { word, currentIndex, totalInstances, correctionId } = payload;
-    const navElement = document.getElementById(`nav-${correctionId}`);
-    if (navElement && totalInstances > 1) {
-      navElement.textContent = `${currentIndex + 1}/${totalInstances}`;
-    }
-  } else if (type === "re-check-document") {
-    if (!isLoading && lastCheckType) {
-      console.log(
-        `Document changed. Re-running last check: ${lastCheckType}`
-      );
-      if (lastCheckType === "TYPO_BRAND") {
-        document.getElementById("typoCheckButton").click();
-      } else if (lastCheckType === "UX_WRITING") {
-        document.getElementById("uxCheckButton").click();
+          tableHTML += `</tbody></table>`;
+          resultsDiv.innerHTML = tableHTML;
+          parent.postMessage(
+            {
+              pluginMessage: {
+                type: "resize-window",
+                width: 800,
+                height: Math.min(900, 350 + uniqueErrorCount * 65),
+              },
+            },
+            "*"
+          );
+        } else {
+          summaryDiv.innerHTML = "";
+          resultsDiv.innerHTML = "No issues found! ✓";
+        }
       }
-    }
-  }
-};
 
-function updateProgressMessage(message) {
-    const resultsDiv = document.getElementById("results");
-    resultsDiv.innerHTML = `<div class="loading"><div class="spinner"></div> ${message}</div>`;
-}
+      function isLineSeparatorOnlyCorrection(original, suggestion) {
+        const cleanOriginal = original
+          .replace(/\u2028/g, " ")
+          .replace(/\u2029/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        const cleanSuggestion = suggestion.replace(/\s+/g, " ").trim();
+
+        return cleanOriginal === cleanSuggestion;
+      }
+      window.onmessage = async (event) => {
+        const { type, payload } = event.data.pluginMessage;
+
+        if (type === "text-to-check") {
+          updateProgressMessage(
+            `Found ${payload.textData.length} text layers. Analyzing with AI...`
+          );
+          await processCheckResponse(payload);
+        } else if (type === "cached-results-found") {
+          console.log("Displaying cached results.");
+          allCorrections = payload.corrections;
+          renderTable(allCorrections, payload.checkType);
+          isLoading = false;
+          document.getElementById("typoCheckButton").disabled = false;
+          document.getElementById("uxCheckButton").disabled = false;
+          showResultsPage();
+        } else if (type === "no-selection") {
+          isLoading = false;
+          document.getElementById("typoCheckButton").disabled = false;
+          document.getElementById("uxCheckButton").disabled = false;
+          document.getElementById(
+            "home-status"
+          ).innerHTML = `<strong style="color:red;">Please select one or more frames to check.</strong>`;
+          showHomePage();
+        } else if (type === "navigation-update") {
+          const { word, currentIndex, totalInstances, correctionId } = payload;
+          const navElement = document.getElementById(`nav-${correctionId}`);
+          if (navElement && totalInstances > 1) {
+            navElement.textContent = `${currentIndex + 1}/${totalInstances}`;
+          }
+        } else if (type === "re-check-document") {
+          if (!isLoading && lastCheckType) {
+            console.log(
+              `Document changed. Re-running last check: ${lastCheckType}`
+            );
+            if (lastCheckType === "TYPO_BRAND") {
+              document.getElementById("typoCheckButton").click();
+            } else if (lastCheckType === "UX_WRITING") {
+              document.getElementById("uxCheckButton").click();
+            }
+          }
+        } else if (type === "cache-cleared") {
+          console.log("Cache cleared response:", payload); 
+          showSuccessMessage();
+        } else if (type === "cache-error") {
+          console.error("Cache clearing failed:", payload.error);
+          alert("Failed to clear cache: " + payload.error);
+        }
+      };
+
+      function updateProgressMessage(message) {
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.innerHTML = `<div class="loading"><div class="spinner"></div> ${message}</div>`;
+      }
 
       function handleNavigationClick(targetCell) {
         const word = targetCell.dataset.word;
         const nodeIds = JSON.parse(targetCell.dataset.nodeIds);
-        const correctionId = targetCell.closest('tr').id.replace('row-', '');
+        const correctionId = targetCell.closest("tr").id.replace("row-", "");
         parent.postMessage(
           {
             pluginMessage: {
@@ -725,8 +870,10 @@ function updateProgressMessage(message) {
       }
 
       function handlePrevNext(action, word) {
-          const cell = document.querySelector(`.original-text-cell[data-word="${word}"]`);
-  const correctionId = cell.closest('tr').id.replace('row-', '');
+        const cell = document.querySelector(
+          `.original-text-cell[data-word="${word}"]`
+        );
+        const correctionId = cell.closest("tr").id.replace("row-", "");
         parent.postMessage(
           {
             pluginMessage: {
@@ -868,5 +1015,8 @@ function updateProgressMessage(message) {
         }
       });
     </script>
+    <div id="successMessage" class="success-message">
+      Cache cleared successfully!
+    </div>
   </body>
 </html>
