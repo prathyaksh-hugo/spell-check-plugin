@@ -364,6 +364,12 @@
         cursor: pointer;
         margin-bottom: 16px;
       }
+      .controls-container {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Adds a small space between the nav controls and the ignore button */
+  margin-top: 4px;
+}
       .button-group {
         font-family: "New Rubrik", sans-serif !important;
         display: flex;
@@ -701,7 +707,7 @@
           let tableHTML = `<table id="resultsTable"><thead><tr><th>S.No</th><th>Original Text</th><th>${suggestionColumnTitle}</th></tr></thead><tbody>`;
 
           corrections.forEach((correction, index) => {
-            const { id, originalSentence, originalWord, suggestion, nodes } =
+            const { id, originalSentence, originalWord, suggestion, nodes, type } =
               correction;
             const instanceCount = nodes.length;
 
@@ -740,28 +746,23 @@
 
             tableHTML += `<tr id="row-${id}">
                         <td>${index + 1}</td>
-                        <td class="original-text-cell" 
-                            data-word="${dataWord}"
-                            data-instance-count="${instanceCount}"
-                            data-node-ids='${JSON.stringify(nodes)}'>
-                            <div>${sentenceHTML}</div>
-                            ${
-                              instanceCount > 1
-                                ? `
-                            <div class="navigation-controls">
-                                <button class="nav-btn" data-action="prev" data-word="${dataWord}" title="Previous instance">‹</button>
-                                <span class="navigation-info" id="nav-${id}">1/${instanceCount}</span>
-                                <button class="nav-btn" data-action="next" data-word="${dataWord}" title="Next instance">›</button>
-                            </div>
-                            `
-                                : ""
-                            }
-                                ${
-                            checkType === "TYPO_BRAND"
-                              ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${displayOriginalWord}" title="Ignore this word">Ignore</button>`
-                              : ""
-                          }
-                        </td>
+                        
+<td class="original-text-cell" 
+    data-word="${originalWord}"
+    data-instance-count="${instanceCount}"
+    data-node-ids='${JSON.stringify(nodes)}'>
+    <div>${sentenceHTML}</div>
+    <div class="controls-container">  
+        ${ instanceCount > 1 && type === 'TYPO_BRAND' ? `
+        <div class="navigation-controls">
+            <button class="nav-btn" data-action="prev" data-word="${originalWord}">‹</button>
+            <span class="navigation-info" id="nav-${id}">1/${instanceCount}</span>
+            <button class="nav-btn" data-action="next" data-word="${originalWord}">›</button>
+        </div>
+        ` : "" }
+        ${ checkType === 'TYPO_BRAND' ? `<button class="ignore-btn" data-correction-id="${id}" data-word="${originalWord}">Ignore</button>` : "" }
+    </div>
+</td>
                         <td>
                           <button class="suggestion-btn" data-correction-id="${id}" data-old-word="${dataWord}" data-new-word="${suggestion}" data-node-ids='${JSON.stringify(
               nodes
